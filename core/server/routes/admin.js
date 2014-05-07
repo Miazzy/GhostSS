@@ -1,4 +1,5 @@
 var admin       = require('../controllers/admin'),
+    frontend    = require('../controllers/frontend'),
     config      = require('../config'),
     middleware  = require('../middleware').middleware,
 
@@ -60,4 +61,12 @@ module.exports = function (server) {
         res.redirect(subdir + '/ghost/');
     });
     server.get('/ghost/', admin.index);
+
+    server.get('/', function(req, res, next) {
+     if (req.headers['user-agent'] == 'sandstormpublish') {
+        frontend.homepage(req,res,next);         
+     } else {
+        res.redirect('/ghost/'); 
+     }
+   });
 };

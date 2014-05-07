@@ -37,7 +37,7 @@ function ghostLocals(req, res, next) {
     res.locals.relativeUrl = req.path.replace(config().paths.subdir, '');
 
     if (res.isAdmin) {
-        res.locals.csrfToken = req.csrfToken();
+      //  res.locals.csrfToken = req.csrfToken();
         when.all([
             api.users.read({id: req.session.user}),
             api.notifications.browse()
