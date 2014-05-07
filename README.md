@@ -6,6 +6,17 @@ This is an initial port of [Ghost](https://github.com/TryGhost/Ghost) to the pri
 
 Marry the two and you can enjoy the best of both worlds.  
 
+## Installing Ghost on Sandstorm Alpha
+
+If your sandbox is at alpha.sandstorm.io, use:
+```
+https://alpha.sandstorm.io/install/c336de0124189a64fcaaa0fe7d95afa5
+```
+If you are running your own Sandstorm server, use:
+```
+http://<your sandstorm server url>/install/c336de0124189a64fcaaa0fe7d95afa5?url=http://sandstorm.io/apps/ghost2.spk
+```
+
 ## Porting Notes
 
 * All http traffic is tunneled through capnproto (an RPC and object serialization protocol) in Sandstorm.  The tunnel does not support custom headers such as X-CSRFToken.  As a result, Ghost's X-CSRFToken handling is disabled.  Sandstorm will have its own cross site scripting protection mechanism.
