@@ -7,10 +7,13 @@ var config        = require('../config'),
     errors        = require('../errorHandling'),
     storage       = require('../storage'),
     updateCheck   = require('../update-check'),
+    capnp         = require('capnp'),
 
     adminNavbar,
     adminControllers,
     loginSecurity = [];
+
+var HackSession = capnp.importSystem("hack-session.capnp");
 
 adminNavbar = {
     content: {
@@ -32,7 +35,6 @@ adminNavbar = {
         path: '/settings/'
     }
 };
-
 
 // TODO: make this a util or helper
 function setSelected(list, name) {
@@ -162,17 +164,24 @@ adminControllers = {
     // Path: /ghost/signout/
     // Method: GET
     'signout': function (req, res) {
-        req.session.destroy();
+        var connection = capnp.connect("unix:/tmp/sandstorm-api");
+        var session = connection.restore("HackSessionContext", HackSession.HackSessionContext);
 
-        var notification = {
-            type: 'success',
-            message: 'You were successfully signed out',
-            status: 'passive',
-            id: 'successlogout'
-        };
+        return session.getPublicId().then(function(data) { 
+            var notification = {
+                type: 'success',
+                message: "To set up your domain to point at your published site, add the following DNS records to" +
+                        "your domain. Replace <b>host.example.com</b> with your site's hostname.<br /><br />" +
+                        "host.example.com IN CNAME " + data.hostname + "<br />" +
+                        "sandstorm-www.host.example.com IN TXT " + data.publicId + "<br /><br />" +
+                        "Note: If your site may get a lot of traffic, consider putting it behind a CDN.",
+                status: 'persistent',
+                id: 'sandstorm-faq'
+            };
 
-        return api.notifications.add(notification).then(function () {
-            res.redirect(config().paths.subdir + '/ghost/signin/');
+            api.notifications.add(notification).then(function () {
+                res.redirect(config().paths.subdir + '/ghost/');
+            });
         });
     },
     // Route: signin

@@ -34,6 +34,7 @@
         "bcryptjs": "0.7.10",
         "bookshelf": "0.6.1",
         "busboy": "0.0.12",
+        "capnp": "0.1.1",
         "colors": "0.6.2",
         "connect-slashes": "1.2.0",
         "downsize": "0.0.5",

@@ -1,0 +1,7 @@
+.usermenu.subnav .usermenu-signout a:before {
+    content: "\e018";
+}
+
+@media (min-width: 601px), (min-width: 601px) {
+  .notifications {
+    width: 500px; } }
