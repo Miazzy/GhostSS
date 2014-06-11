@@ -17,6 +17,7 @@ var api         = require('../api'),
     url         = require('url'),
     when        = require('when'),
     _           = require('lodash'),
+    sandstorm     = require('../sandstorm'),
 
     expressServer,
     ONE_HOUR_S  = 60 * 60,
@@ -119,6 +120,8 @@ function activateTheme(activeTheme) {
 
     // Update user error template
     errors.updateActiveTheme(activeTheme, config().paths.availableThemes[activeTheme].hasOwnProperty('error'));
+
+    sandstorm.publish();
 }
 
  // ### ManageAdminAndTheme Middleware

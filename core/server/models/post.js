@@ -11,7 +11,7 @@ var _              = require('lodash'),
     ghostBookshelf = require('./base'),
     validation     = require('../data/validation'),
     xmlrpc         = require('../xmlrpc'),
-    childProcess   = require('child_process'),
+    sandstorm      = require('../sandstorm'),
 
     Post,
     Posts;
@@ -35,25 +35,7 @@ Post = ghostBookshelf.Model.extend({
                 xmlrpc.ping(model.attributes);
             }
 
-            child = childProcess.exec('/publish-it.sh',
-                function (error, stdout, stderr) {
-                console.log('stdout: ' + stdout);
-                console.log('stderr: ' + stderr);
-                if (error !== null) {
-                    console.log('exec error: ' + error);
-                }
-            });
-
-            child.on('exit', function (code) {
-                console.log('Child process exited with exit code '+code);
-                var msg = {
-                    type: 'success', // this can be 'error', 'success', 'warn' and 'info'
-                    message: 'Website has been published.', // A string. Should fit in one line.
-                    status: 'persistent', // or 'passive'
-                    id: 'websitepublished' // A unique ID
-                };
-                api.notifications.add(msg);
-            });
+            sandstorm.publish();
             
             return self.updateTags(model, attributes, options);
         });
