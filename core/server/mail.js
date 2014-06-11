@@ -69,15 +69,15 @@ GhostMailer.prototype.usingSendmail = function () {
 };
 
 GhostMailer.prototype.emailDisabled = function () {
-    api.notifications.add({
-        type: 'warn',
-        message: [
-            "Ghost is currently unable to send e-mail.",
-            "See <a href=\"http://docs.ghost.org/mail\">http://docs.ghost.org/mail</a> for instructions"
-        ].join(' '),
-        status: 'persistent',
-        id: 'ghost-mail-disabled'
-    });
+    // api.notifications.add({
+    //     type: 'warn',
+    //     message: [
+    //         "Ghost is currently unable to send e-mail.",
+    //         "See <a href=\"http://docs.ghost.org/mail\">http://docs.ghost.org/mail</a> for instructions"
+    //     ].join(' '),
+    //     status: 'persistent',
+    //     id: 'ghost-mail-disabled'
+    // });
     this.transport = null;
 };
 
