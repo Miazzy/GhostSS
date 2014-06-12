@@ -2,6 +2,7 @@
 // that as mostly used by templates and handlebar helpers.
 
 var when        = require('when'),
+    sandstorm   = require('../sandstorm'),
 
 // Variables
     themeConfig = {};
@@ -30,6 +31,8 @@ function update(settings, configUrl) {
         themeConfig.logo = globals[2] ? globals[2].value : '';
         themeConfig.cover = globals[3] ? globals[3].value : '';
         return;
+    }).then(function () {
+        sandstorm.publish();
     });
 }
 

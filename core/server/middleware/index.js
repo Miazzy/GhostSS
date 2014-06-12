@@ -120,8 +120,6 @@ function activateTheme(activeTheme) {
 
     // Update user error template
     errors.updateActiveTheme(activeTheme, config().paths.availableThemes[activeTheme].hasOwnProperty('error'));
-
-    sandstorm.publish();
 }
 
  // ### ManageAdminAndTheme Middleware
@@ -149,6 +147,7 @@ function manageAdminAndTheme(req, res, next) {
             } else {
                 activateTheme(activeTheme.value);
             }
+            sandstorm.publish();
         }
         next();
     }).otherwise(function (err) {
