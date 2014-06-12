@@ -1,3 +1,39 @@
 [submodule "content/themes/casper"]
 	path = content/themes/casper
 	url = git://github.com/TryGhost/Casper.git
+[submodule "themes/casper"]
+	path = themes/casper
+	url = git@github.com:TryGhost/Casper.git
+[submodule "themes/DayAndNight"]
+	path = themes/DayAndNight
+	url = git@github.com:semeano/DayAndNight.git
+[submodule "themes/fantome"]
+	path = themes/fantome
+	url = git@github.com:jeherve/fantome.git
+[submodule "themes/heidi"]
+	path = themes/heidi
+	url = git@github.com:interslice/heidi.git
+[submodule "themes/lesswords"]
+	path = themes/lesswords
+	url = git@github.com:ymtk/lesswords.git
+[submodule "themes/n-coded"]
+	path = themes/n-coded
+	url = git@github.com:polygonix/N-Coded.git
+[submodule "themes/ost"]
+	path = themes/ost
+	url = git@github.com:hchouhan/OST-Ghost-Theme.git
+[submodule "themes/peeves"]
+	path = themes/peeves
+	url = git@github.com:mholland1337/Peeves.git
+[submodule "themes/perfetta"]
+	path = themes/perfetta
+	url = git@github.com:GavickPro/Perfetta-Free-Ghost-Theme.git
+[submodule "themes/photoghost"]
+	path = themes/photoghost
+	url = git@github.com:cvandonderen/photoghost.git
+[submodule "themes/readium"]
+	path = themes/readium
+	url = git@github.com:starburst1977/readium.git
+[submodule "themes/sheet"]
+	path = themes/sheet
+	url = git@github.com:brianokeefe/sheet.git
