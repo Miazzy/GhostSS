@@ -1,0 +1,9 @@
+{{!< default}}
+<div class="wrapper">
+    <section>
+        To set up your domain to point at your published site, add the following DNS records to your domain. Replace <b>host.example.com</b> with your site's hostname.<br /><br />
+        host.example.com IN CNAME {{sandstormHostname}}<br />
+        sandstorm-www.host.example.com IN TXT {{sandstormPublicId}} <br /><br />
+        Note: If your site may get a lot of traffic, consider putting it behind a CDN.
+    </section>
+</div>

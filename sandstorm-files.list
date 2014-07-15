@@ -101,10 +101,13 @@ core/server/views/content.hbs
 core/server/views/debug.hbs
 core/server/views/default.hbs
 core/server/views/editor.hbs
+core/server/views/error.hbs
 core/server/views/partials
 core/server/views/partials/navbar.hbs
 core/server/views/partials/notifications.hbs
+core/server/views/sandstorm.hbs
 core/server/views/settings.hbs
+core/server/views/signup.hbs
 core/server/views/user-error.hbs
 core/server/xmlrpc.js
 core/shared/favicon.ico

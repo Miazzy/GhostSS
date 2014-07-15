@@ -168,19 +168,11 @@ adminControllers = {
         var session = connection.restore("HackSessionContext", HackSession.HackSessionContext);
 
         return session.getPublicId().then(function(data) { 
-            var notification = {
-                type: 'success',
-                message: "To set up your domain to point at your published site, add the following DNS records to" +
-                        "your domain. Replace <b>host.example.com</b> with your site's hostname.<br /><br />" +
-                        "host.example.com IN CNAME " + data.hostname + "<br />" +
-                        "sandstorm-www.host.example.com IN TXT " + data.publicId + "<br /><br />" +
-                        "Note: If your site may get a lot of traffic, consider putting it behind a CDN.",
-                status: 'persistent',
-                id: 'sandstorm-faq'
-            };
-
-            api.notifications.add(notification).then(function () {
-                res.redirect(config().paths.subdir + '/ghost/');
+            res.render('sandstorm', {
+                bodyClass: 'settings',
+                adminNav: setSelected(adminNavbar, 'settings'),
+                sandstormHostname: data.hostname,
+                sandstormPublicId: data.publicId
             });
         });
     },
