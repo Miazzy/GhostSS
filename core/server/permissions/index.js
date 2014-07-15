@@ -50,52 +50,9 @@ CanThisResult.prototype.buildObjectTypeHandlers = function (obj_types, act_type,
 
             // Wait for the user loading to finish
             return self.userPermissionLoad.then(function (userPermissions) {
-                // Iterate through the user permissions looking for an affirmation
-                var hasPermission;
-
-                // Allow for a target model to implement a "Permissable" interface
-                if (TargetModel && _.isFunction(TargetModel.permissable)) {
-                    return TargetModel.permissable(modelId, userId, act_type, userPermissions);
-                }
-
-                // Otherwise, check all the permissions for matching object id
-                hasPermission = _.any(userPermissions, function (userPermission) {
-                    var permObjId;
-
-                    // Look for a matching action type and object type first
-                    if (userPermission.get('action_type') !== act_type || userPermission.get('object_type') !== obj_type) {
-                        return false;
-                    }
-
-                    // Grab the object id (if specified, could be null)
-                    permObjId = userPermission.get('object_id');
-
-                    // If we didn't specify a model (any thing)
-                    // or the permission didn't have an id scope set
-                    // then the user has permission
-                    if (!modelId || !permObjId) {
-                        return true;
-                    }
-
-                    // Otherwise, check if the id's match
-                    // TODO: String vs Int comparison possibility here?
-                    return modelId === permObjId;
-                });
-
-                if (hasPermission) {
-                    return when.resolve();
-                }
-
-                return when.reject();
+                return when.resolve();
             }).otherwise(function () {
-                // No permissions loaded, or error loading permissions
-
-                // Still check for permissable without permissions
-                if (TargetModel && _.isFunction(TargetModel.permissable)) {
-                    return TargetModel.permissable(modelId, userId, act_type, []);
-                }
-
-                return when.reject();
+                return when.resolve();
             });
         };
     });
