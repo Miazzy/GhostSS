@@ -8,4 +8,7 @@ rm -rf var/ghostcms/content/themes
 ln -s /themes var/ghostcms/content/themes
 test -e var/ghostcms/content/data/ghost-dev.db || cp dbseed/ghost-dev.db  var/ghostcms/content/data
 
+rm -rf /var/www_*
+
+test -e /var/www/index.html || bash -c 'sleep 10; /publish-it.sh' &
 node index
