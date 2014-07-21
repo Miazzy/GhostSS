@@ -42,6 +42,7 @@ const pkgdef :Spk.PackageDefinition = (
     # here are only to tell it where to find files that the app wants.
     searchPath = [
       ( sourcePath = "." ),  # Search this directory first.
+      ( sourcePath = "/opt/sandstorm/latest/usr/include/sandstorm", packagePath = "node_modules" ),
       ( sourcePath = "/",    # Then search the system root directory.
         hidePaths = [ "home", "proc", "sys" ]
         # You probably don't want the app pulling files from these places,

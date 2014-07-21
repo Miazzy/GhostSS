@@ -172,7 +172,9 @@ adminControllers = {
                 bodyClass: 'settings',
                 adminNav: setSelected(adminNavbar, 'settings'),
                 sandstormHostname: data.hostname,
-                sandstormPublicId: data.publicId
+                sandstormPublicId: data.publicId,
+                sandstormAutoUrl: data.autoUrl,
+                sandstormIsDemoUser: data.isDemoUser
             });
         });
     },
