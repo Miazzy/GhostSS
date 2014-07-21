@@ -1,9 +1,6 @@
 [submodule "themes/DayAndNight"]
 	path = themes/DayAndNight
 	url = git@github.com:semeano/DayAndNight.git
-[submodule "themes/fantome"]
-	path = themes/fantome
-	url = git@github.com:jeherve/fantome.git
 [submodule "themes/heidi"]
 	path = themes/heidi
 	url = git@github.com:interslice/heidi.git
