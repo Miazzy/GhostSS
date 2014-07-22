@@ -10,5 +10,5 @@ test -e var/ghostcms/content/data/ghost-dev.db || cp dbseed/ghost-dev.db  var/gh
 
 rm -rf /var/www_*
 
-test -e /var/www/index.html || bash -c 'sleep 10; /publish-it.sh' &
+bash -c 'sleep 10; /publish-it.sh' &
 node index
