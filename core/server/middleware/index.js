@@ -18,12 +18,16 @@ var api         = require('../api'),
     when        = require('when'),
     _           = require('lodash'),
     sandstorm     = require('../sandstorm'),
+    capnp         = require('capnp'),
 
     expressServer,
     ONE_HOUR_S  = 60 * 60,
     ONE_YEAR_S  = 365 * 24 * ONE_HOUR_S,
     ONE_HOUR_MS = ONE_HOUR_S * 1000,
     ONE_YEAR_MS = 365 * 24 * ONE_HOUR_MS;
+var HackSession = capnp.importSystem("hack-session.capnp");
+
+var publicIdPromise;
 
 // ##Custom Middleware
 
@@ -38,13 +42,20 @@ function ghostLocals(req, res, next) {
     res.locals.relativeUrl = req.path.replace(config().paths.subdir, '');
 
     if (res.isAdmin) {
+        if (!publicIdPromise) {
+            var connection = capnp.connect("unix:/tmp/sandstorm-api");
+            var session = connection.restore("HackSessionContext", HackSession.HackSessionContext);
+            publicIdPromise = session.getPublicId();
+        }
       //  res.locals.csrfToken = req.csrfToken();
         when.all([
             api.users.read({id: req.session.user}),
-            api.notifications.browse()
+            api.notifications.browse(),
+            publicIdPromise
         ]).then(function (values) {
             var currentUser = values[0],
-                notifications = values[1];
+                notifications = values[1],
+                publicIdData = values[2];
 
             _.extend(res.locals,  {
                 currentUser: {
@@ -52,7 +63,12 @@ function ghostLocals(req, res, next) {
                     email: currentUser.email,
                     image: currentUser.image
                 },
-                messages: notifications
+                messages: notifications,
+
+                sandstormHostname: publicIdData.hostname,
+                sandstormPublicId: publicIdData.publicId,
+                sandstormAutoUrl: publicIdData.autoUrl,
+                sandstormIsDemoUser: publicIdData.isDemoUser
             });
             next();
         }).otherwise(function () {

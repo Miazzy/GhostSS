@@ -45,6 +45,7 @@ module.exports = function (server) {
     server.get('/ghost/editor/', admin.editor);
     server.get('/ghost/content/', admin.content);
     server.get('/ghost/settings*', admin.settings);
+    server.get('/ghost/sandstorm/', admin.sandstorm);
     server.get('/ghost/debug/', admin.debug.index);
 
     server.get('/ghost/export/', admin.debug.exportContent);

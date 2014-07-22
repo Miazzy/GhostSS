@@ -33,8 +33,15 @@ adminNavbar = {
         navClass: 'settings',
         key: 'admin.navbar.settings',
         path: '/settings/'
+    },
+    sandstorm: {
+        name: 'Connect to your domain',
+        navClass: 'sandstorm',
+        key: 'admin.navbar.sandstorm',
+        path: '/sandstorm/'
     }
 };
+
 
 // TODO: make this a util or helper
 function setSelected(list, name) {
@@ -103,6 +110,22 @@ adminControllers = {
             adminNav: setSelected(adminNavbar, 'settings')
         });
     },
+    // Route: sandstorm
+    // Path: /ghost/sandstorm
+    // Method: GET
+    'sandstorm': function (req, res) {
+        if (req.params.id !== undefined) {
+            res.render('sandstorm', {
+                bodyClass: 'sandstorm',
+                adminNav: setSelected(adminNavbar, 'sandstorm')
+            });
+        } else {
+            res.render('sandstorm', {
+                bodyClass: 'sandstorm',
+                adminNav: setSelected(adminNavbar, 'sandstorm')
+            });
+        }
+    },
     // Route: debug
     // path: /ghost/debug/
     // Method: GET
@@ -164,18 +187,17 @@ adminControllers = {
     // Path: /ghost/signout/
     // Method: GET
     'signout': function (req, res) {
-        var connection = capnp.connect("unix:/tmp/sandstorm-api");
-        var session = connection.restore("HackSessionContext", HackSession.HackSessionContext);
+        req.session.destroy();
 
-        return session.getPublicId().then(function(data) { 
-            res.render('sandstorm', {
-                bodyClass: 'settings',
-                adminNav: setSelected(adminNavbar, 'settings'),
-                sandstormHostname: data.hostname,
-                sandstormPublicId: data.publicId,
-                sandstormAutoUrl: data.autoUrl,
-                sandstormIsDemoUser: data.isDemoUser
-            });
+        var notification = {
+            type: 'success',
+            message: 'You were successfully signed out',
+            status: 'passive',
+            id: 'successlogout'
+        };
+
+        return api.notifications.add(notification).then(function () {
+            res.redirect(config().paths.subdir + '/ghost/signin/');
         });
     },
     // Route: signin
