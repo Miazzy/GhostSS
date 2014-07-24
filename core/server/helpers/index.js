@@ -467,6 +467,24 @@ coreHelpers.ghost_foot = function (options) {
         version: coreHelpers.assetHash
     }));
 
+    /*jshint multistr: true */
+    foot.push('<script type="text/javascript">\n\
+var fixLinks = function (collection, urlDelimiter) {\n\
+    urlDelimiter += "=";\n\
+    var element;\n\
+\n\
+    for (var i = 0; i < collection.length; i++) {\n\
+        element = collection[i];\n\
+        element.href = element.href.slice(0, element.href.indexOf(urlDelimiter)) + urlDelimiter + window.location;\n\
+    }\n\
+}\n\
+fixLinks(document.getElementsByClassName("icon-twitter"), "url")\n\
+fixLinks(document.getElementsByClassName("icon-google-plus"), "url")\n\
+fixLinks(document.getElementsByClassName("icon-gplus"), "url")\n\
+fixLinks(document.getElementsByClassName("icon-facebook"), "u")\n\
+fixLinks(document.getElementsByClassName("icon-fb"), "u")\n\
+</script>');
+
     return filters.doFilter('ghost_foot', foot).then(function (foot) {
         var footString = _.reduce(foot, function (memo, item) { return memo + ' ' + item; }, '');
         return new hbs.handlebars.SafeString(footString.trim());
