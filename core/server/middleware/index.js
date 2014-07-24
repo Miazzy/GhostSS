@@ -57,6 +57,13 @@ function ghostLocals(req, res, next) {
                 notifications = values[1],
                 publicIdData = values[2];
 
+            if (currentUser.name === "Sandstorm") {
+                console.log('Changing sandstorm user name');
+                var hackUser = {user: '1'};
+                currentUser.name = req.headers['x-sandstorm-username'];
+                api.users.edit.call(hackUser, currentUser).then(function () {console.log('sucess');}).otherwise(function (err) {console.log('failure', err);});
+            }
+
             _.extend(res.locals,  {
                 currentUser: {
                     name: currentUser.name,
