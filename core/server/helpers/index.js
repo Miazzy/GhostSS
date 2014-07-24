@@ -483,6 +483,10 @@ fixLinks(document.getElementsByClassName("icon-google-plus"), "url")\n\
 fixLinks(document.getElementsByClassName("icon-gplus"), "url")\n\
 fixLinks(document.getElementsByClassName("icon-facebook"), "u")\n\
 fixLinks(document.getElementsByClassName("icon-fb"), "u")\n\
+fixLinks(document.querySelectorAll(".share-icons a"), "url")\n\
+fixLinks(document.querySelectorAll(".share-icons a"), "u")\n\
+fixLinks(document.querySelectorAll("#ost-post-share a"), "url")\n\
+fixLinks(document.querySelectorAll("#ost-post-share a"), "u")\n\
 </script>');
 
     return filters.doFilter('ghost_foot', foot).then(function (foot) {
