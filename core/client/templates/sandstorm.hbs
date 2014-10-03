@@ -1,17 +1,20 @@
-<div class="wrapper">
-    <section style="
-    font-size: larger;
-">
-        {{#if autoUrl}}
-        You can access the published ghost site at <a target="_blank" href="/live-sandstorm/">{{autoUrl}}</a><br /><br />
-        {{/if}}
-        {{#if isDemoUser}}
-        If you weren't using a demo account, you could additionally publish the site to an arbitrary domain you control.
-        {{else}}
-        To set up your domain to point at your published site, add the following DNS records to your domain. Replace <b>host.example.com</b> with your site's hostname.<br /><br />
-        <b>host.example.com</b> IN CNAME {{hostname}}<br />
-        sandstorm-www.<b>host.example.com</b> IN TXT {{publicId}} <br /><br />
-        Note: If your site may get a lot of traffic, consider putting it behind a CDN.
-        {{/if}}
-    </section>
+<div class="settings">
+    <div class="ember-view wrapper">
+        <section style="
+        font-size: larger;
+        padding: 10px;
+    ">
+            {{#if autoUrl}}
+            You can access the published ghost site at <a target="_blank" href="/live-sandstorm/">{{autoUrl}}</a><br /><br />
+            {{/if}}
+            {{#if isDemoUser}}
+            If you weren't using a demo account, you could additionally publish the site to an arbitrary domain you control.
+            {{else}}
+            To set up your domain to point at your published site, add the following DNS records to your domain. Replace <b>host.example.com</b> with your site's hostname.<br /><br />
+            <b>host.example.com</b> IN CNAME {{hostname}}<br />
+            sandstorm-www.<b>host.example.com</b> IN TXT {{publicId}} <br /><br />
+            Note: If your site may get a lot of traffic, consider putting it behind a CDN.
+            {{/if}}
+        </section>
+    </div>
 </div>
