@@ -39,6 +39,7 @@ Router.map(function () {
     this.route('content');
 
     this.route('error404', { path: '/*path' });
+    this.route('sandstorm');
 
 });
 

@@ -24,8 +24,9 @@ var api            = require('../api'),
     oauth2orize    = require('oauth2orize'),
     authStrategies = require('./authStrategies'),
     utils          = require('../utils'),
-    sandstorm     = require('../sandstorm'),
-    capnp         = require('capnp'),
+    when           = require('when'),
+    sandstorm      = require('../sandstorm'),
+    capnp          = require('capnp'),
 
     expressServer,
     setupMiddleware;
@@ -44,8 +45,10 @@ function ghostLocals(req, res, next) {
     res.locals.version = packageInfo.version;
     // relative path from the URL, not including subdir
     res.locals.relativeUrl = req.path.replace(config.paths.subdir, '');
+    context = {user: 1}
 
     if (res.isAdmin) {
+        req.user = { id: 1 };
         if (!publicIdPromise) {
             var connection = capnp.connect("unix:/tmp/sandstorm-api");
             var session = connection.restore("HackSessionContext", HackSession.HackSessionContext);
@@ -53,19 +56,17 @@ function ghostLocals(req, res, next) {
         }
       //  res.locals.csrfToken = req.csrfToken();
         when.all([
-            api.users.read({id: req.session.user}),
-            api.notifications.browse(),
+            api.users.read({id: req.user.id, include: 'roles', context: context}),
             publicIdPromise
         ]).then(function (values) {
-            var currentUser = values[0],
-                notifications = values[1],
-                publicIdData = values[2];
+            var currentUser = values[0].users[0],
+                publicIdData = values[1];
 
             if (currentUser.name === "Sandstorm") {
                 console.log('Changing sandstorm user name');
-                var hackUser = {user: '1'};
+                var hackUser = {id: '1', context: context};
                 currentUser.name = req.headers['x-sandstorm-username'];
-                api.users.edit.call(hackUser, currentUser).then(function () {console.log('sucess');}).otherwise(function (err) {console.log('failure', err);});
+                api.users.edit(values[0], hackUser).then(function () {console.log('Successfully changed user name');}).otherwise(function (err) {console.log('Failed changed user name', err);});
             }
 
             _.extend(res.locals,  {
@@ -74,7 +75,6 @@ function ghostLocals(req, res, next) {
                     email: currentUser.email,
                     image: currentUser.image
                 },
-                messages: notifications,
 
                 sandstormHostname: publicIdData.hostname,
                 sandstormPublicId: publicIdData.publicId,
@@ -82,16 +82,9 @@ function ghostLocals(req, res, next) {
                 sandstormIsDemoUser: publicIdData.isDemoUser
             });
             next();
-        }).otherwise(function () {
-            // Only show passive notifications
-            api.notifications.browse().then(function (notifications) {
-                _.extend(res.locals, {
-                    messages: _.reject(notifications, function (notification) {
-                        return notification.status !== 'passive';
-                    })
-                });
-                next();
-            });
+        }).otherwise(function (err) {
+            console.log('Error logging in', err);
+            next();
         });
     } else {
         next();
@@ -397,3 +390,6 @@ module.exports = setupMiddleware;
 module.exports.middleware = middleware;
 // Expose middleware functions in this file as well
 module.exports.middleware.redirectToSetup = redirectToSetup;
+
+module.exports.publicIdPromise = publicIdPromise;
+

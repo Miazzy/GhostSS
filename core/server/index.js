@@ -180,13 +180,13 @@ function initNotifications() {
         }] }, {context: {internal: true}});
     }
     if (mailer.state && mailer.state.emailDisabled) {
-        api.notifications.add({ notifications: [{
-            type: 'warn',
-            message: [
-                "Ghost is currently unable to send e-mail.",
-                "See <a href=\"http://support.ghost.org/mail\">http://support.ghost.org/mail</a> for instructions"
-            ].join(' ')
-        }] }, {context: {internal: true}});
+        // api.notifications.add({ notifications: [{
+        //     type: 'warn',
+        //     message: [
+        //         "Ghost is currently unable to send e-mail.",
+        //         "See <a href=\"http://support.ghost.org/mail\">http://support.ghost.org/mail</a> for instructions"
+        //     ].join(' ')
+        // }] }, {context: {internal: true}});
     }
 }
 

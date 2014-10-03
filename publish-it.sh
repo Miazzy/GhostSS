@@ -2,7 +2,7 @@
 STATICDIR=/var/www
 TMPDIR=/var/www_`date +%s%N`
 URL=http://127.0.0.1:8080/
-REPLACE_URL=http://this_will_be_replaced_by_sandstorm
+REPLACE_URL=http://this-will-be-replaced-by-sandstorm.com
 
 rm -rf $TMPDIR
 wget -r -p -np -nH -U 'sandstormpublish' -P $TMPDIR $URL > /dev/null 2>&1

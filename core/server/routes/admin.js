@@ -3,6 +3,7 @@ var admin       = require('../controllers/admin'),
     config      = require('../config'),
     express     = require('express'),
     utils       = require('../utils'),
+    api         = require('../api'),
 
     adminRoutes;
 
@@ -28,13 +29,20 @@ adminRoutes = function (middleware) {
         res.redirect(subdir + '/ghost/');
     });
 
+    router.get(/^\/live-sandstorm\/$/, function redirect(req, res) {
+        /*jslint unparam:true*/
+        return api.sandstorm.live().then(function (data) {
+            res.redirect(301, data.url);
+        });
+    });
+
     router.get(/^\/ghost\//, middleware.redirectToSetup, admin.index);
 
     router.get('/', function(req, res, next) {
         if (req.headers['user-agent'] == 'sandstormpublish') {
             frontend.homepage(req,res,next);
         } else {
-            res.redirect('/ghost/');
+            res.redirect(subdir + '/ghost/');
         }
     });
 

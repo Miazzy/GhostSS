@@ -1,5 +1,5 @@
 <header id="global-header" class="navbar">
-    
+
     <button {{action "toggleSidebarOrGoHome" target="view"}} class="ghost-logo ghost-logo-button">
         <span class="hidden">Ghost</span>
     </button>
@@ -14,6 +14,10 @@
             {{#unless session.user.isAuthor}}
                 {{gh-activating-list-item route="settings" title="Settings" classNames="settings js-close-sidebar"}}
             {{/unless}}
+            {{gh-activating-list-item route="sandstorm" title="Connect To Your Domain" classNames="sandstorm js-close-sidebar"}}
+            <li class="js-close-sidebar">
+                <a href="/live-sandstorm/" style="cursor: pointer;">View Live Site</a>
+            </li>
 
             <li id="usermenu" class="usermenu subnav">
                 {{#gh-popover-button popoverName="user-menu" classNames="dropdown"}}
@@ -28,8 +32,6 @@
                         <li class="usermenu-profile">{{#link-to "settings.users.user" session.user.slug}}Your Profile{{/link-to}}</li>
                         <li class="divider"></li>
                         <li class="usermenu-help"><a href="http://support.ghost.org/">Help / Support</a></li>
-                        <li class="divider"></li>
-                        <li class="usermenu-signout">{{#link-to "signout"}}Sign Out{{/link-to}}</li>
                 {{/gh-popover}}
             </li>
         </ul>

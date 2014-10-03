@@ -1,6 +1,11 @@
 import ShortcutsRoute from 'ghost/mixins/shortcuts-route';
+import ghostPaths from 'ghost/utils/ghost-paths';
 
 var ApplicationRoute = Ember.Route.extend(SimpleAuth.ApplicationRouteMixin, ShortcutsRoute, {
+
+    model: function () {
+        return {sandstormPublicId: 'test1234'};
+    },
 
     afterModel: function (model, transition) {
         if (this.get('session').isAuthenticated) {
@@ -109,6 +114,12 @@ var ApplicationRoute = Ember.Route.extend(SimpleAuth.ApplicationRouteMixin, Shor
                 if (errorObj.hasOwnProperty('el')) {
                     errorObj.el.addClass('input-error');
                 }
+            });
+        },
+
+        openLiveSite: function (errors) {
+            Ember.$.getJSON(ghostPaths().apiRoot + '/sandstorm/live').then(function (data) {
+                window.open(data.url, '_blank');
             });
         }
     }

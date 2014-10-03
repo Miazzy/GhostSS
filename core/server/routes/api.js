@@ -81,6 +81,10 @@ apiRoutes = function (middleware) {
     // ## Uploads
     router.post('/uploads', middleware.busboy, api.http(api.uploads.add));
 
+    // ## Sandstorm
+    router.get('/sandstorm/live', api.http(api.sandstorm.live));
+    router.get('/sandstorm/faq', api.http(api.sandstorm.faq));
+
     return router;
 };
 

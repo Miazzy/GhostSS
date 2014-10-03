@@ -5,7 +5,7 @@
 <main role="main" id="main" {{bind-attr data-notification-count=topNotificationCount}}>
     {{gh-notifications location="top" notify="topNotificationChange"}}
     {{gh-notifications location="bottom"}}
-
+    <p>{{sandstormHostname}}</p>
     {{outlet}}
 </main>
 {{outlet modal}}

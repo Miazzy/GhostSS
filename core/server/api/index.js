@@ -20,6 +20,7 @@ var _              = require('lodash'),
     slugs          = require('./slugs'),
     authentication = require('./authentication'),
     uploads        = require('./upload'),
+    sandstorm      = require('./sandstorm'),
     dataExport     = require('../data/export'),
     errors         = require('../errors'),
 
@@ -289,7 +290,8 @@ module.exports = {
     users: users,
     slugs: slugs,
     authentication: authentication,
-    uploads: uploads
+    uploads: uploads,
+    sandstorm: sandstorm
 };
 
 /**

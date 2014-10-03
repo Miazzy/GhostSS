@@ -17,7 +17,7 @@ const pkgdef :Spk.PackageDefinition = (
     # This manifest is included in your app package to tell Sandstorm
     # about your app.
 
-    appVersion = 4,  # Increment this for every release.
+    appVersion = 5,  # Increment this for every release.
 
     actions = [
       # Define your "new document" handlers here.
@@ -56,7 +56,7 @@ const pkgdef :Spk.PackageDefinition = (
   # `spk dev` will write a list of all the files your app uses to this file.
   # You should review it later, before shipping your app.
 
-  alwaysInclude = ["themes", "core"]
+  alwaysInclude = ["themes", "core", "node_modules"]
   # Fill this list with more names of files or directories that should be
   # included in your package, even if not listed in sandstorm-files.list.
   # Use this to force-include stuff that you know you need but which may
