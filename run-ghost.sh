@@ -2,6 +2,12 @@
 
 test -e var/ghostcms || mkdir -p var/ghostcms
 mkdir -p var/www
+test -e /var/www/index.html || cat > /var/www/index.html <<__EOF__
+<html><body>
+<p>This Ghost site has been set up successfully, but no content has
+been published. Please wait while it is being generated. </p>
+</body></html>
+__EOF__
 
 test -e var/ghostcms/content || cp -R content var/ghostcms
 rm -rf var/ghostcms/content/themes

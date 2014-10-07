@@ -1,4 +1,7 @@
-#! /bin/sh
+#!/bin/bash
+
+set -euo pipefail
+
 STATICDIR=/var/www
 TMPDIR=/var/www_`date +%s%N`
 URL=http://127.0.0.1:8080/
