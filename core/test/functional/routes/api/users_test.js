@@ -3,25 +3,19 @@
 var testUtils     = require('../../../utils'),
     should        = require('should'),
     supertest     = require('supertest'),
-    express       = require('express'),
 
     ghost         = require('../../../../../core'),
 
-    httpServer,
     request;
 
 describe('User API', function () {
     var accesstoken = '';
 
     before(function (done) {
-        var app = express();
-
         // starting ghost automatically populates the db
         // TODO: prevent db init, and manage bringing up the DB with fixtures ourselves
-        ghost({app: app}).then(function (_httpServer) {
-            httpServer = _httpServer;
-            request = supertest.agent(app);
-
+        ghost().then(function (ghostServer) {
+            request = supertest.agent(ghostServer.rootApp);
         }).then(function () {
             return testUtils.doAuth(request);
         }).then(function (token) {
@@ -35,17 +29,16 @@ describe('User API', function () {
 
     after(function (done) {
         testUtils.clearData().then(function () {
-            httpServer.close();
             done();
-        });
+        }).catch(done);
     });
 
     describe('Browse', function () {
-
         it('returns dates in ISO 8601 format', function (done) {
             request.get(testUtils.API.getApiQuery('users/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -57,7 +50,7 @@ describe('User API', function () {
                     testUtils.API.checkResponse(jsonResponse, 'users');
 
                     jsonResponse.users.should.have.length(1);
-                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', ['roles']);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user');
 
                     testUtils.API.isISO8601(jsonResponse.users[0].last_login).should.be.true;
                     testUtils.API.isISO8601(jsonResponse.users[0].created_at).should.be.true;
@@ -71,6 +64,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -83,7 +77,29 @@ describe('User API', function () {
                     testUtils.API.checkResponse(jsonResponse, 'users');
 
                     jsonResponse.users.should.have.length(1);
-                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', ['roles']);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user');
+                    done();
+                });
+        });
+
+        it('can retrieve all users with roles', function (done) {
+            request.get(testUtils.API.getApiQuery('users/?include=roles'))
+                .set('Authorization', 'Bearer ' + accesstoken)
+                .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
+                .expect(200)
+                .end(function (err, res) {
+                    if (err) {
+                        return done(err);
+                    }
+
+                    should.not.exist(res.headers['x-cache-invalidate']);
+                    var jsonResponse = res.body;
+                    jsonResponse.users.should.exist;
+                    testUtils.API.checkResponse(jsonResponse, 'users');
+
+                    jsonResponse.users.should.have.length(1);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', 'roles');
                     done();
                 });
         });
@@ -94,6 +110,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/me/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -106,7 +123,7 @@ describe('User API', function () {
                     should.not.exist(jsonResponse.meta);
 
                     jsonResponse.users.should.have.length(1);
-                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', ['roles']);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user');
                     done();
                 });
         });
@@ -115,6 +132,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/1/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -127,7 +145,7 @@ describe('User API', function () {
                     should.not.exist(jsonResponse.meta);
 
                     jsonResponse.users.should.have.length(1);
-                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', ['roles']);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user');
                     done();
                 });
         });
@@ -136,6 +154,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/slug/joe-bloggs/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -148,7 +167,7 @@ describe('User API', function () {
                     should.not.exist(jsonResponse.meta);
 
                     jsonResponse.users.should.have.length(1);
-                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', ['roles']);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user');
                     done();
                 });
         });
@@ -157,6 +176,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/email/jbloggs%40example.com/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -169,7 +189,7 @@ describe('User API', function () {
                     should.not.exist(jsonResponse.meta);
 
                     jsonResponse.users.should.have.length(1);
-                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', ['roles']);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user');
                     done();
                 });
         });
@@ -178,6 +198,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/me/?include=roles'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -200,6 +221,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/me/?include=roles,roles.permissions'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -224,6 +246,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/slug/joe-bloggs/?include=roles,roles.permissions'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(200)
                 .end(function (err, res) {
                     if (err) {
@@ -248,6 +271,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/99/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(404)
                 .end(function (err, res) {
                     if (err) {
@@ -267,6 +291,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/slug/blargh/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .expect(404)
                 .end(function (err, res) {
                     if (err) {
@@ -287,6 +312,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/me/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .end(function (err, res) {
                     if (err) {
                         return done(err);
@@ -296,9 +322,9 @@ describe('User API', function () {
                         changedValue = 'http://joe-bloggs.ghost.org',
                         dataToSend;
                     jsonResponse.users[0].should.exist;
-                    testUtils.API.checkResponse(jsonResponse.users[0], 'user', ['roles']);
+                    testUtils.API.checkResponse(jsonResponse.users[0], 'user');
 
-                    dataToSend = { users: [
+                    dataToSend = {users: [
                         {website: changedValue}
                     ]};
 
@@ -306,6 +332,7 @@ describe('User API', function () {
                         .set('Authorization', 'Bearer ' + accesstoken)
                         .send(dataToSend)
                         .expect('Content-Type', /json/)
+                        .expect('Cache-Control', testUtils.cacheRules['private'])
                         .expect(200)
                         .end(function (err, res) {
                             if (err) {
@@ -317,7 +344,7 @@ describe('User API', function () {
                             putBody.users[0].should.exist;
                             putBody.users[0].website.should.eql(changedValue);
                             putBody.users[0].email.should.eql(jsonResponse.users[0].email);
-                            testUtils.API.checkResponse(putBody.users[0], 'user', ['roles']);
+                            testUtils.API.checkResponse(putBody.users[0], 'user');
                             done();
                         });
                 });
@@ -327,6 +354,7 @@ describe('User API', function () {
             request.get(testUtils.API.getApiQuery('users/me/'))
                 .set('Authorization', 'Bearer ' + accesstoken)
                 .expect('Content-Type', /json/)
+                .expect('Cache-Control', testUtils.cacheRules['private'])
                 .end(function (err, res) {
                     if (err) {
                         return done(err);
@@ -334,7 +362,8 @@ describe('User API', function () {
 
                     var jsonResponse = res.body,
                         changedValue = 'joe-bloggs.ghost.org';
-                    jsonResponse.users[0].should.exist;
+
+                    should.exist(jsonResponse.users[0]);
                     jsonResponse.users[0].website = changedValue;
 
                     request.put(testUtils.API.getApiQuery('users/me/'))
@@ -342,13 +371,13 @@ describe('User API', function () {
                         .send(jsonResponse)
                         .expect(401)
                         .end(function (err, res) {
+                            /*jshint unused:false*/
                             if (err) {
                                 return done(err);
                             }
 
                             done();
                         });
-
                 });
         });
     });

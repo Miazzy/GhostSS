@@ -1,21 +1,22 @@
 var ModalDialog = Ember.Component.extend({
     didInsertElement: function () {
-        this.$('#modal-container').fadeIn(50);
-
-        this.$('.modal-background').show().fadeIn(10, function () {
-            $(this).addClass('in');
-        });
-
-        this.$('.js-modal').addClass('in');
+        this.$('.js-modal-container, .js-modal-background').addClass('fade-in open');
+        this.$('.js-modal').addClass('open');
     },
 
-    willDestroyElement: function () {
+    close: function () {
+        var self = this;
 
-        this.$('.js-modal').removeClass('in');
+        this.$('.js-modal, .js-modal-background').removeClass('fade-in').addClass('fade-out');
 
-        this.$('.modal-background').removeClass('in');
+        // The background should always be the last thing to fade out, so check on that instead of the content
+        this.$('.js-modal-background').on('animationend webkitAnimationEnd oanimationend MSAnimationEnd', function (event) {
+            if (event.originalEvent.animationName === 'fade-out') {
+                self.$('.js-modal, .js-modal-background').removeClass('open');
+            }
+        });
 
-        return this._super();
+        this.sendAction();
     },
 
     confirmaccept: 'confirmAccept',
@@ -23,15 +24,16 @@ var ModalDialog = Ember.Component.extend({
 
     actions: {
         closeModal: function () {
-            this.sendAction();
+            this.close();
         },
         confirm: function (type) {
             this.sendAction('confirm' + type);
-            this.sendAction();
-        }
+            this.close();
+        },
+        noBubble: Ember.K
     },
 
-    klass: function () {
+    klass: Ember.computed('type', 'style', function () {
         var classNames = [];
 
         classNames.push(this.get('type') ? 'modal-' + this.get('type') : 'modal');
@@ -42,18 +44,16 @@ var ModalDialog = Ember.Component.extend({
             });
         }
 
-        classNames.push(this.get('animation'));
-
         return classNames.join(' ');
-    }.property('type', 'style', 'animation'),
+    }),
 
-    acceptButtonClass: function () {
-        return this.get('confirm.accept.buttonClass') ? this.get('confirm.accept.buttonClass') : 'button-add';
-    }.property('confirm.accept.buttonClass'),
+    acceptButtonClass: Ember.computed('confirm.accept.buttonClass', function () {
+        return this.get('confirm.accept.buttonClass') ? this.get('confirm.accept.buttonClass') : 'btn btn-green';
+    }),
 
-    rejectButtonClass: function () {
-        return this.get('confirm.reject.buttonClass') ? this.get('confirm.reject.buttonClass') : 'button-delete';
-    }.property('confirm.reject.buttonClass')
+    rejectButtonClass: Ember.computed('confirm.reject.buttonClass', function () {
+        return this.get('confirm.reject.buttonClass') ? this.get('confirm.reject.buttonClass') : 'btn btn-red';
+    })
 });
 
 export default ModalDialog;

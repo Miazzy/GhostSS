@@ -1,14 +1,19 @@
 var makeRoute = function (root, args) {
-    var parts = Array.prototype.slice.call(args, 0).join('/'),
-        route = [root, parts].join('/');
+    var slashAtStart,
+        slashAtEnd,
+        parts,
+        route;
 
-    if (route.slice(-1) !== '/') {
-        route += '/';
-    }
+    slashAtStart = /^\//;
+    slashAtEnd = /\/$/;
+    route = root.replace(slashAtEnd, '');
+    parts = Array.prototype.slice.call(args, 0);
 
-    return route;
+    parts.forEach(function (part) {
+        route = [route, part.replace(slashAtStart, '').replace(slashAtEnd, '')].join('/');
+    });
+    return route += '/';
 };
-
 
 function ghostPaths() {
     var path = window.location.pathname,
@@ -25,10 +30,6 @@ function ghostPaths() {
         blogRoot: subdir + '/',
         adminRoot: adminRoot,
         apiRoot: apiRoot,
-        userImage: assetUrl('/assets/img/user-image.png'),
-        errorImageSrc: assetUrl('/ghost/img/404-ghost@2x.png'),
-        errorImageSrcSet: assetUrl('/ghost/img/404-ghost.png') + ' 1x, ' +
-            assetUrl('/ghost/img/404-ghost@2x.png') + ' 2x',
 
         url: {
             admin: function () {
@@ -37,6 +38,16 @@ function ghostPaths() {
 
             api: function () {
                 return makeRoute(apiRoot, arguments);
+            },
+
+            join: function () {
+                if (arguments.length > 1) {
+                    return makeRoute(arguments[0], Array.prototype.slice.call(arguments, 1));
+                } else if (arguments.length === 1) {
+                    var arg = arguments[0];
+                    return arg.slice(-1) === '/' ? arg : arg + '/';
+                }
+                return '/';
             },
 
             asset: assetUrl

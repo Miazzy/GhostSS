@@ -9,11 +9,13 @@
 var should      = require('should'),
 
 // Stuff we are testing
-    Showdown    = require('showdown'),
+    Showdown    = require('showdown-ghost'),
     ghostgfm            = require('../../shared/lib/showdown/extensions/ghostgfm'),
     ghostimagepreview   = require('../../shared/lib/showdown/extensions/ghostimagepreview'),
+    footnotes      = require('../../shared/lib/showdown/extensions/ghostfootnotes'),
+    highlight      = require('../../shared/lib/showdown/extensions/ghosthighlight'),
 
-    converter   = new Showdown.converter({extensions: [ghostimagepreview, ghostgfm]});
+    converter   = new Showdown.converter({extensions: [ghostimagepreview, ghostgfm, footnotes, highlight]});
 
 // To stop jshint complaining
 should.equal(true, true);
@@ -23,6 +25,14 @@ describe('Showdown client side converter', function () {
 
     it('should replace showdown strike through with html', function () {
         var testPhrase = {input: '~~foo_bar~~', output: /^<p><del>foo_bar<\/del><\/p>$/},
+            processedMarkup = converter.makeHtml(testPhrase.input);
+
+        // The image is the entire markup, so the image box should be too
+        processedMarkup.should.match(testPhrase.output);
+    });
+
+    it('should honour escaped tildes', function () {
+        var testPhrase = {input: '\\~\\~foo_bar\\~\\~', output: /^<p>~~foo_bar~~<\/p>$/},
             processedMarkup = converter.makeHtml(testPhrase.input);
 
         // The image is the entire markup, so the image box should be too
@@ -190,39 +200,39 @@ describe('Showdown client side converter', function () {
         var testPhrases = [
             {
                 input: 'http://google.co.uk',
-                output: /^<p><a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/p>$/
+                output: /^<p><a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/p>$/
             },
             {
                 input: 'https://atest.com/fizz/buzz?baz=fizzbuzz',
-                output: /^<p><a href=\'https:\/\/atest.com\/fizz\/buzz\?baz=fizzbuzz\'>https:\/\/atest.com\/fizz\/buzz\?baz=fizzbuzz<\/a><\/p>$/
+                output: /^<p><a href="https:\/\/atest.com\/fizz\/buzz\?baz=fizzbuzz">https:\/\/atest.com\/fizz\/buzz\?baz=fizzbuzz<\/a><\/p>$/
             },
             {
                 input: 'Some [ text (http://www.google.co.uk) some other text',
-                output: /^<p>Some \[ text \(<a href=\'http:\/\/www.google.co.uk\'>http:\/\/www.google.co.uk<\/a>\) some other text<\/p>$/
+                output: /^<p>Some \[ text \(<a href="http:\/\/www.google.co.uk">http:\/\/www.google.co.uk<\/a>\) some other text<\/p>$/
             },
             {
                 input: '>http://google.co.uk',
-                output: /^<blockquote>\n  <p><a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/p>\n<\/blockquote>$/
+                output: /^<blockquote>\n  <p><a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/p>\n<\/blockquote>$/
             },
             {
                 input: '> http://google.co.uk',
-                output: /^<blockquote>\n  <p><a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/p>\n<\/blockquote>$/
+                output: /^<blockquote>\n  <p><a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/p>\n<\/blockquote>$/
             },
             {
                 input: '<>>> http://google.co.uk',
-                output: /^<p>&lt;>>> <a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/p>$/
+                output: /^<p>&lt;>>> <a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/p>$/
             },
             {
                 input: '<strong>http://google.co.uk',
-                output: /^<p><strong><a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/p>$/
+                output: /^<p><strong><a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/p>$/
             },
             {
                 input: '# http://google.co.uk',
-                output: /^<h1 id="httpgooglecouk"><a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/h1>$/
+                output: /^<h1 id="httpgooglecouk"><a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/h1>$/
             },
             {
                 input: '* http://google.co.uk',
-                output: /^<ul>\n<li><a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/li>\n<\/ul>$/
+                output: /^<ul>\n<li><a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/li>\n<\/ul>$/
             }
         ],
         processedMarkup;
@@ -301,7 +311,7 @@ describe('Showdown client side converter', function () {
             },
             {
                 input: '<a href="http://facebook.com">test</a> http://google.co.uk',
-                output: /^<p><a href=\"http:\/\/facebook.com\">test<\/a> <a href=\'http:\/\/google.co.uk\'>http:\/\/google.co.uk<\/a><\/p>$/
+                output: /^<p><a href=\"http:\/\/facebook.com\">test<\/a> <a href="http:\/\/google.co.uk">http:\/\/google.co.uk<\/a><\/p>$/
             }
         ],
         processedMarkup;
@@ -467,11 +477,11 @@ describe('Showdown client side converter', function () {
             },
             {
                 input: '![http://google.co.uk/kitten.jpg](http://google.co.uk/kitten.jpg)',
-                output: /^<section.*?((?!<a href=\'http:\/\/google.co.uk\/kitten.jpg\').)*<\/section>$/
+                output: /^<section.*?((?!<a href="http:\/\/google.co.uk\/kitten.jpg").)*<\/section>$/
             },
             {
                 input: '![image stuff](http://dsurl.stuff/something)',
-                output: /^<section.*?((?!<a href=\'http:\/\/dsurl.stuff\/something\').)*<\/section>$/
+                output: /^<section.*?((?!<a href="http:\/\/dsurl.stuff\/something").)*<\/section>$/
             }
         ],
         processedMarkup;
@@ -494,7 +504,7 @@ describe('Showdown client side converter', function () {
             },
             {   // audio isn't counted as a block tag by showdown so gets wrapped in <p></p>
                 input: '<audio class=\"podcastplayer\" controls>\n    <source src=\"foobar.mp3\" type=\"audio/mp3\" preload=\"none\"></source>\n    <source src=\"foobar.off\" type=\"audio/ogg\" preload=\"none\"></source>\n</audio>',
-                output: /^<audio class=\"podcastplayer\" controls>  \n    <source src=\"foobar.mp3\" type=\"audio\/mp3\" preload=\"none\"><\/source>\n    <source src=\"foobar.off\" type=\"audio\/ogg\" preload=\"none\"><\/source>\n<\/audio>$/,
+                output: /^<audio class=\"podcastplayer\" controls>  \n    <source src=\"foobar.mp3\" type=\"audio\/mp3\" preload=\"none\"><\/source>\n    <source src=\"foobar.off\" type=\"audio\/ogg\" preload=\"none\"><\/source>\n<\/audio>$/
             }
         ];
 
@@ -504,6 +514,113 @@ describe('Showdown client side converter', function () {
         });
     });
 
+    it('should treat ![^n] as footnote unless it occurs on a new line', function () {
+        var testPhrases = [
+            {
+                input: 'Foo![^1](bar)',
+                output: '<p>Foo!<sup id="fnref:1"><a href="#fn:1" rel="footnote">1</a></sup>(bar)</p>'
+            },
+
+            {
+                input: '![^1](bar)',
+                output: '<section id="image_upload_undefined" class="js-drop-zone image-uploader"><img class="js-upload-target" src="bar"/><div class="description">Add image of <strong>^1</strong></div><input data-url="upload" class="js-fileupload main fileupload" type="file" name="uploadimage"></section>'
+            }
+        ];
+
+        testPhrases.forEach(function (testPhrase) {
+            var processedMarkup = converter.makeHtml(testPhrase.input);
+            processedMarkup.should.match(testPhrase.output);
+        });
+    });
+
+    it('should replace showdown highlight with html', function () {
+        var testPhrases = [
+            {
+                input: '==foo_bar==',
+                output: /^<p><mark>foo_bar<\/mark><\/p>$/
+            },
+            {
+                input: 'My stuff that has a ==highlight== in the middle.',
+                output: /^<p>My stuff that has a <mark>highlight<\/mark> in the middle.<\/p>$/
+            },
+            {
+                input: 'My stuff that has a ==multiple word highlight== in the middle.',
+                output: /^<p>My stuff that has a <mark>multiple word highlight<\/mark> in the middle.<\/p>$/
+            },
+            {
+                input: 'My stuff that has a ==multiple word **bold** highlight== in the middle.',
+                output: /^<p>My stuff that has a <mark>multiple word <strong>bold<\/strong> highlight<\/mark> in the middle.<\/p>$/
+            },
+            {
+                input: 'My stuff that has a ==multiple word and\n line broken highlight== in the middle.',
+                output: /^<p>My stuff that has a <mark>multiple word and <br \/>\n line broken highlight<\/mark> in the middle.<\/p>$/
+            },
+            {
+                input: 'Test ==Highlighting with a [link](https://ghost.org) in the middle== of it.',
+                output: /^<p>Test <mark>Highlighting with a <a href="https:\/\/ghost.org">link<\/a> in the middle<\/mark> of it.<\/p>$/
+            },
+            {
+                input: '==[link](http://ghost.org)==',
+                output: /^<p><mark><a href="http:\/\/ghost.org">link<\/a><\/mark><\/p>$/
+            },
+            {
+                input: '[==link==](http://ghost.org)',
+                output: /^<p><a href="http:\/\/ghost.org"><mark>link<\/mark><\/a><\/p>$/
+            },
+            {
+                input: '====test==test==test====test',
+                output: /^<p><mark>==test<\/mark>test<mark>test<\/mark>==test<\/p>$/
+            }
+        ];
+
+        testPhrases.forEach(function (testPhrase) {
+            var processedMarkup = converter.makeHtml(testPhrase.input);
+            processedMarkup.should.match(testPhrase.output);
+        });
+    });
+
+    it('should not effect pre tags', function () {
+        var testPhrase = {
+                    input:  '```javascript\n' +
+                            'var foo = "bar";\n' +
+                            'if (foo === "bar") {\n' +
+                            '    return true;\n' +
+                            '} else if (foo === "baz") {\n' +
+                            '    return "magic happened";\n' +
+                            '}\n' +
+                            '```',
+                    output: /^<mark><\/mark>$/
+        },
+            processedMarkup = converter.makeHtml(testPhrase.input);
+
+        // this does not get mark tags
+        processedMarkup.should.not.match(testPhrase.output);
+    });
+
+    it('should ignore multiple equals', function () {
+        var testPhrase = {input: '=====', output: /^<p>=====<\/p>$/},
+            processedMarkup = converter.makeHtml(testPhrase.input);
+
+        processedMarkup.should.match(testPhrase.output);
+    });
+
+    it('should still handle headers correctly', function () {
+        var testPhrases = [
+            {
+                input: 'Header\n==',
+                output: /^<h1 id="header">Header  <\/h1>$/
+            },
+            {
+                input: 'First Header\n==\nSecond Header\n==',
+                output: /^<h1 id="firstheader">First Header  <\/h1>\n\n<h1 id="secondheader">Second Header  <\/h1>$/
+            }
+        ];
+
+        testPhrases.forEach(function (testPhrase) {
+            var processedMarkup = converter.makeHtml(testPhrase.input);
+            processedMarkup.should.match(testPhrase.output);
+        });
+    });
 
     //      Waiting for showdown typography to be updated
     //    it('should correctly convert quotes to curly quotes', function () {

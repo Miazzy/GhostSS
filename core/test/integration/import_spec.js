@@ -3,7 +3,7 @@
 var testUtils   = require('../utils/index'),
     should      = require('should'),
     sinon       = require('sinon'),
-    when        = require('when'),
+    Promise     = require('bluebird'),
     assert      = require('assert'),
     _           = require('lodash'),
     rewire      = require('rewire'),
@@ -11,16 +11,11 @@ var testUtils   = require('../utils/index'),
 
     // Stuff we are testing
     config          = rewire('../../server/config'),
-    configUpdate    = config.__get__('updateConfig'),
     defaultConfig   = rewire('../../../config.example')[process.env.NODE_ENV],
     migration       = rewire('../../server/data/migration'),
-    versioning      = require('../../server/data/versioning'),
     exporter        = require('../../server/data/export'),
     importer        = require('../../server/data/import'),
-    Importer000     = require('../../server/data/import/000'),
-    Importer001     = require('../../server/data/import/001'),
-    Importer002     = require('../../server/data/import/002'),
-    Importer003     = require('../../server/data/import/003'),
+    DataImporter    = require('../../server/data/import/data-importer'),
 
     knex,
     sandbox = sinon.sandbox.create();
@@ -37,68 +32,22 @@ describe('Import', function () {
     should.exist(importer);
 
     describe('Resolves', function () {
-
         beforeEach(testUtils.setup());
         beforeEach(function () {
             var newConfig = _.extend(config, defaultConfig);
 
             migration.__get__('config', newConfig);
-            configUpdate(newConfig);
+            config.set(newConfig);
             knex = config.database.knex;
         });
 
-        it('resolves 000', function (done) {
-            var importStub = sandbox.stub(Importer000, 'importData', function () {
-                    return when.resolve();
+        it('resolves DataImporter', function (done) {
+            var importStub = sandbox.stub(DataImporter, 'importData', function () {
+                    return Promise.resolve();
                 }),
-                fakeData = { test: true };
+                fakeData = {test: true};
 
-            importer('000', fakeData).then(function () {
-                importStub.calledWith(fakeData).should.equal(true);
-
-                importStub.restore();
-
-                done();
-            }).catch(done);
-        });
-
-        it('resolves 001', function (done) {
-            var importStub = sandbox.stub(Importer001, 'importData', function () {
-                    return when.resolve();
-                }),
-                fakeData = { test: true };
-
-            importer('001', fakeData).then(function () {
-                importStub.calledWith(fakeData).should.equal(true);
-
-                importStub.restore();
-
-                done();
-            }).catch(done);
-        });
-
-        it('resolves 002', function (done) {
-            var importStub = sandbox.stub(Importer002, 'importData', function () {
-                    return when.resolve();
-                }),
-                fakeData = { test: true };
-
-            importer('002', fakeData).then(function () {
-                importStub.calledWith(fakeData).should.equal(true);
-
-                importStub.restore();
-
-                done();
-            }).catch(done);
-        });
-
-        it('resolves 003', function (done) {
-            var importStub = sandbox.stub(Importer003, 'importData', function () {
-                    return when.resolve();
-                }),
-                fakeData = { test: true };
-
-            importer('003', fakeData).then(function () {
+            importer.doImport(fakeData).then(function () {
                 importStub.calledWith(fakeData).should.equal(true);
 
                 importStub.restore();
@@ -108,27 +57,88 @@ describe('Import', function () {
         });
     });
 
-    describe('000', function () {
+    describe('Sanitizes', function () {
         before(function ()  {
             knex = config.database.knex;
         });
         beforeEach(testUtils.setup('roles', 'owner', 'settings'));
 
-        should.exist(Importer000);
+        it('import results have data and problems', function (done) {
+            var exportData;
+
+            testUtils.fixtures.loadExportFixture('export-003').then(function (exported) {
+                exportData = exported;
+                return importer.doImport(exportData);
+            }).then(function (importResult) {
+                should.exist(importResult);
+                should.exist(importResult.data);
+                should.exist(importResult.problems);
+
+                done();
+            }).catch(done);
+        });
+
+        it('removes duplicate posts', function (done) {
+            var exportData;
+
+            testUtils.fixtures.loadExportFixture('export-003-duplicate-posts').then(function (exported) {
+                exportData = exported;
+                return importer.doImport(exportData);
+            }).then(function (importResult) {
+                should.exist(importResult.data.data.posts);
+
+                importResult.data.data.posts.length.should.equal(1);
+
+                importResult.problems.posts.length.should.equal(1);
+
+                done();
+            }).catch(done);
+        });
+
+        it('removes duplicate tags and updates associations', function (done) {
+            var exportData;
+
+            testUtils.fixtures.loadExportFixture('export-003-duplicate-tags').then(function (exported) {
+                exportData = exported;
+                return importer.doImport(exportData);
+            }).then(function (importResult) {
+                should.exist(importResult.data.data.tags);
+                should.exist(importResult.data.data.posts_tags);
+
+                importResult.data.data.tags.length.should.equal(1);
+
+                // Check we imported all posts_tags associations
+                importResult.data.data.posts_tags.length.should.equal(2);
+                // Check the post_tag.tag_id was updated when we removed duplicate tag
+                _.all(importResult.data.data.posts_tags, function (postTag) {
+                    return postTag.tag_id !== 2;
+                });
+
+                importResult.problems.tags.length.should.equal(1);
+
+                done();
+            }).catch(done);
+        });
+    });
+
+    describe('DataImporter', function () {
+        before(function ()  {
+            knex = config.database.knex;
+        });
+        beforeEach(testUtils.setup('roles', 'owner', 'settings'));
+
+        should.exist(DataImporter);
 
         it('imports data from 000', function (done) {
-            var exportData,
-                versioningStub = sandbox.stub(versioning, 'getDatabaseVersion', function () {
-                    return when.resolve('000');
-                });
+            var exportData;
 
             testUtils.fixtures.loadExportFixture('export-000').then(function (exported) {
                 exportData = exported;
 
-                return importer('000', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 // Grab the data from tables
-                return when.all([
+                return Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -156,23 +166,11 @@ describe('Import', function () {
                 // test tags
                 tags.length.should.equal(exportData.data.tags.length, 'no new tags');
 
-                versioningStub.restore();
-
                 done();
             }).catch(done);
         });
-    });
 
-    describe('001', function () {
-
-        before(function ()  {
-            knex = config.database.knex;
-        });
-        beforeEach(testUtils.setup('roles', 'owner', 'settings'));
-
-        should.exist(Importer001);
-
-        it('safely imports data from 001', function (done) {
+        it('safely imports data, from 001', function (done) {
             var exportData,
                 timestamp = 1349928000000;
 
@@ -184,10 +182,10 @@ describe('Import', function () {
                 exportData.data.posts[0].updated_at = timestamp;
                 exportData.data.posts[0].published_at = timestamp;
 
-                return importer('001', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 // Grab the data from tables
-                return when.all([
+                return Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -251,18 +249,17 @@ describe('Import', function () {
             testUtils.fixtures.loadExportFixture('export-001').then(function (exported) {
                 exportData = exported;
 
-                //change title to 151 characters
+                // change title to 151 characters
                 exportData.data.posts[0].title = new Array(152).join('a');
                 exportData.data.posts[0].tags = 'Tag';
-                return importer('001', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-
                 error[0].message.should.eql('Value in [posts.title] exceeds maximum length of 150 characters.');
                 error[0].type.should.eql('ValidationError');
 
-                when.all([
+                Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -288,11 +285,8 @@ describe('Import', function () {
                     settings.length.should.be.above(0, 'Wrong number of settings');
                     _.findWhere(settings, {key: 'databaseVersion'}).value.should.equal('003', 'Wrong database version');
 
-
-
                     done();
                 });
-
             }).catch(done);
         });
 
@@ -301,17 +295,16 @@ describe('Import', function () {
 
             testUtils.fixtures.loadExportFixture('export-001').then(function (exported) {
                 exportData = exported;
-                //change to blank settings key
+                // change to blank settings key
                 exportData.data.settings[3].key = null;
-                return importer('001', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-
                 error[0].message.should.eql('Value in [settings.key] cannot be blank.');
                 error[0].type.should.eql('ValidationError');
 
-                when.all([
+                Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -339,19 +332,15 @@ describe('Import', function () {
 
                     done();
                 });
-
             }).catch(done);
         });
     });
 
     describe('002', function () {
-
         before(function ()  {
             knex = config.database.knex;
         });
         beforeEach(testUtils.setup('roles', 'owner', 'settings'));
-
-        should.exist(Importer002);
 
         it('safely imports data from 002', function (done) {
             var exportData,
@@ -365,10 +354,10 @@ describe('Import', function () {
                 exportData.data.posts[0].updated_at = timestamp;
                 exportData.data.posts[0].published_at = timestamp;
 
-                return importer('002', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 // Grab the data from tables
-                return when.all([
+                return Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -429,22 +418,20 @@ describe('Import', function () {
         it('doesn\'t import invalid post data from 002', function (done) {
             var exportData;
 
-
             testUtils.fixtures.loadExportFixture('export-002').then(function (exported) {
                 exportData = exported;
 
-                //change title to 151 characters
+                // change title to 151 characters
                 exportData.data.posts[0].title = new Array(152).join('a');
                 exportData.data.posts[0].tags = 'Tag';
-                return importer('002', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-
                 error[0].message.should.eql('Value in [posts.title] exceeds maximum length of 150 characters.');
                 error[0].type.should.eql('ValidationError');
 
-                when.all([
+                Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -471,7 +458,6 @@ describe('Import', function () {
 
                     done();
                 });
-
             }).catch(done);
         });
 
@@ -480,17 +466,16 @@ describe('Import', function () {
 
             testUtils.fixtures.loadExportFixture('export-002').then(function (exported) {
                 exportData = exported;
-                //change to blank settings key
+                // change to blank settings key
                 exportData.data.settings[3].key = null;
-                return importer('002', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-
                 error[0].message.should.eql('Value in [settings.key] cannot be blank.');
                 error[0].type.should.eql('ValidationError');
 
-                when.all([
+                Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -517,7 +502,6 @@ describe('Import', function () {
 
                     done();
                 });
-
             }).catch(done);
         });
     });
@@ -528,17 +512,15 @@ describe('Import', function () {
         });
         beforeEach(testUtils.setup('roles', 'owner', 'settings'));
 
-        should.exist(Importer003);
-
         it('safely imports data from 003 (single user)', function (done) {
             var exportData;
 
             testUtils.fixtures.loadExportFixture('export-003').then(function (exported) {
                 exportData = exported;
-                return importer('003', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 // Grab the data from tables
-                return when.all([
+                return Promise.all([
                     knex('users').select(),
                     knex('posts').select(),
                     knex('settings').select(),
@@ -580,7 +562,7 @@ describe('Import', function () {
 
             testUtils.fixtures.loadExportFixture('export-003-badValidation').then(function (exported) {
                 exportData = exported;
-                return importer('003', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 done(new Error('Allowed import of duplicate data'));
             }).catch(function (response) {
@@ -603,23 +585,12 @@ describe('Import', function () {
             var exportData;
             testUtils.fixtures.loadExportFixture('export-003-dbErrors').then(function (exported) {
                 exportData = exported;
-                return importer('003', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 done(new Error('Allowed import of duplicate data'));
             }).catch(function (response) {
-                response.length.should.equal(3);
+                response.length.should.be.above(0);
                 response[0].type.should.equal('DataImportError');
-                response[0].message.should.eql(
-                    'Duplicate entry found. Multiple values of "tagging-things" found for tags.slug.'
-                );
-                response[1].type.should.equal('DataImportError');
-                response[1].message.should.eql(
-                    'Duplicate entry found. Multiple values of "tagging-things" found for tags.slug.'
-                );
-                response[2].type.should.equal('DataImportError');
-                response[2].message.should.eql(
-                    'Duplicate entry found. Multiple values of "test-ghost-post" found for posts.slug.'
-                );
                 done();
             }).catch(done);
         });
@@ -630,7 +601,7 @@ describe('Import', function () {
             testUtils.fixtures.loadExportFixture('export-003-mu-unknownAuthor').then(function (exported) {
                 exportData = exported;
 
-                return importer('003', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 done(new Error('Allowed import of unknown author'));
             }).catch(function (response) {
@@ -651,7 +622,7 @@ describe('Import', function () {
                 exportData.data.tags.length.should.be.above(1);
                 exportData.data.posts_tags.length.should.be.above(1);
 
-                return importer('003', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 done(new Error('Allowed import of invalid tags data'));
             }).catch(function (response) {
@@ -672,11 +643,34 @@ describe('Import', function () {
 
                 exportData.data.posts.length.should.be.above(1);
 
-                return importer('003', exportData);
+                return importer.doImport(exportData);
             }).then(function () {
                 done(new Error('Allowed import of invalid tags data'));
             }).catch(function (response) {
                 response.length.should.equal(5, response);
+                done();
+            }).catch(done);
+        });
+
+        it('correctly sanitizes incorrect UUIDs', function (done) {
+            var exportData;
+
+            testUtils.fixtures.loadExportFixture('export-003-wrongUUID').then(function (exported) {
+                exportData = exported;
+
+                exportData.data.posts.length.should.be.above(0);
+
+                return importer.doImport(exportData);
+            }).then(function () {
+                // Grab the data from tables
+                return knex('posts').select();
+            }).then(function (importedData) {
+                should.exist(importedData);
+
+                assert.equal(validator.isUUID(importedData[0].uuid), true, 'Old Ghost UUID NOT fixed');
+                assert.equal(validator.isUUID(importedData[1].uuid), true, 'Empty UUID NOT fixed');
+                assert.equal(validator.isUUID(importedData[2].uuid), true, 'Missing UUID NOT fixed');
+                assert.equal(validator.isUUID(importedData[3].uuid), true, 'Malformed UUID NOT fixed');
                 done();
             }).catch(done);
         });
@@ -707,703 +701,697 @@ describe('Import', function () {
     });
 });
 
-
 // Tests in here do an import-per-describe, and then have several tests to check various bits of data
 describe('Import (new test structure)', function () {
     before(testUtils.teardown);
 
-    describe('003', function () {
+    after(testUtils.teardown);
 
+    describe('imports multi user data onto blank ghost install', function () {
+        var exportData;
+
+        before(function doImport(done) {
+            knex = config.database.knex;
+
+            testUtils.initFixtures('roles', 'owner', 'settings').then(function () {
+                return testUtils.fixtures.loadExportFixture('export-003-mu');
+            }).then(function (exported) {
+                exportData = exported;
+                return importer.doImport(exportData);
+            }).then(function () {
+                done();
+            }).catch(done);
+        });
         after(testUtils.teardown);
 
-        should.exist(Importer003);
-
-        describe('imports multi user data onto blank ghost install', function () {
-            var exportData;
-
-            before(function doImport(done) {
-                knex = config.database.knex;
-
-                testUtils.initFixtures('roles', 'owner', 'settings').then(function () {
-                    return testUtils.fixtures.loadExportFixture('export-003-mu');
-                }).then(function (exported) {
-                    exportData = exported;
-                    return importer('003', exportData);
-                }).then(function () {
-                    done();
-                }).catch(done);
-            });
-            after(testUtils.teardown);
-
-            it('gets the right data', function (done) {
-                var fetchImported = when.join(
-                    knex('posts').select(),
-                    knex('settings').select(),
-                    knex('tags').select()
-                );
-
-                fetchImported.then(function (importedData) {
-                    var posts,
-                        settings,
-                        tags,
-                        post1,
-                        post2,
-                        post3;
-
-                    // General data checks
-                    should.exist(importedData);
-                    importedData.length.should.equal(3, 'Did not get data successfully');
-
-                    // Test posts, settings and tags
-                    posts = importedData[0];
-                    settings = importedData[1];
-                    tags = importedData[2];
-
-                    post1 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[0].slug;
-                    });
-                    post2 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[1].slug;
-                    });
-                    post3 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[2].slug;
-                    });
-
-                    // test posts
-                    posts.length.should.equal(3, 'Wrong number of posts');
-                    post1.title.should.equal(exportData.data.posts[0].title);
-                    post2.title.should.equal(exportData.data.posts[1].title);
-                    post3.title.should.equal(exportData.data.posts[2].title);
-
-                    // test tags
-                    tags.length.should.equal(3, 'should be 3 tags');
-
-                    // test settings
-                    settings.length.should.be.above(0, 'Wrong number of settings');
-                    _.findWhere(settings, {key: 'databaseVersion'}).value.should.equal('003', 'Wrong database version');
-
-                    done();
-                }).catch(done);
-            });
-
-            it('imports users with correct roles and status', function (done) {
-                var fetchImported = when.join(
-                    knex('users').select(),
-                    knex('roles_users').select()
-                );
-
-                fetchImported.then(function (importedData) {
-                    var user1,
-                        user2,
-                        user3,
-                        users,
-                        roles_users;
-
-                    // General data checks
-                    should.exist(importedData);
-                    importedData.length.should.equal(2, 'Did not get data successfully');
-
-                    // Test the users and roles
-                    users = importedData[0];
-                    roles_users = importedData[1];
-
-                    // we imported 3 users
-                    // the original user should be untouched
-                    // the two news users should have been created
-                    users.length.should.equal(3, 'There should only be three users');
-
-                    // the owner user is first
-                    user1 = users[0];
-                    // the other two users should have the imported data, but they get inserted in different orders
-                    user2 = _.find(users, function (user) {
-                        return user.name === exportData.data.users[1].name;
-                    });
-                    user3 = _.find(users, function (user) {
-                        return user.name === exportData.data.users[2].name;
-                    });
-
-                    user1.email.should.equal(testUtils.DataGenerator.Content.users[0].email);
-                    user1.password.should.equal(testUtils.DataGenerator.Content.users[0].password);
-                    user1.status.should.equal('active');
-                    user2.email.should.equal(exportData.data.users[1].email);
-                    user3.email.should.equal(exportData.data.users[2].email);
-
-                    // Newly created users should have a status of locked
-                    user2.status.should.equal('locked');
-                    user3.status.should.equal('locked');
-
-                    // Newly created users should have created_at/_by and updated_at/_by set to when they were imported
-                    user2.created_by.should.equal(user1.id);
-                    user2.created_at.should.not.equal(exportData.data.users[1].created_at);
-                    user2.updated_by.should.equal(user1.id);
-                    user2.updated_at.should.not.equal(exportData.data.users[1].updated_at);
-                    user3.created_by.should.equal(user1.id);
-                    user3.created_at.should.not.equal(exportData.data.users[2].created_at);
-                    user3.updated_by.should.equal(user1.id);
-                    user3.updated_at.should.not.equal(exportData.data.users[2].updated_at);
-
-                    roles_users.length.should.equal(3, 'There should be 3 role relations');
-
-                    _.each(roles_users, function (roleUser) {
-                        if (roleUser.user_id === user1.id) {
-                            roleUser.role_id.should.equal(4, 'Original user should be an owner');
-                        }
-                        if (roleUser.user_id === user2.id) {
-                            roleUser.role_id.should.equal(1, 'Josephine should be an admin');
-                        }
-                        if (roleUser.user_id === user3.id) {
-                            roleUser.role_id.should.equal(3, 'Smith should be an author by default');
-                        }
-                    });
-
-                    done();
-                }).catch(done);
-            });
-
-            it('imports posts & tags with correct authors, owners etc', function (done) {
-                var fetchImported = when.join(
-                    knex('users').select(),
-                    knex('posts').select(),
-                    knex('tags').select()
-                );
-
-                fetchImported.then(function (importedData) {
-                    var users, user1, user2, user3,
-                        posts, post1, post2, post3,
-                        tags, tag1, tag2, tag3;
-
-                    // General data checks
-                    should.exist(importedData);
-                    importedData.length.should.equal(3, 'Did not get data successfully');
-
-                    // Test the users and roles
-                    users = importedData[0];
-                    posts = importedData[1];
-                    tags  = importedData[2];
-
-                    // Grab the users
-                    // the owner user is first
-                    user1 = users[0];
-                    // the other two users should have the imported data, but they get inserted in different orders
-                    user2 = _.find(users, function (user) {
-                        return user.name === exportData.data.users[1].name;
-                    });
-                    user3 = _.find(users, function (user) {
-                        return user.name === exportData.data.users[2].name;
-                    });
-                    post1 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[0].slug;
-                    });
-                    post2 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[1].slug;
-                    });
-                    post3 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[2].slug;
-                    });
-                    tag1 = _.find(tags, function (tag) {
-                        return tag.slug === exportData.data.tags[0].slug;
-                    });
-                    tag2 = _.find(tags, function (tag) {
-                        return tag.slug === exportData.data.tags[1].slug;
-                    });
-                    tag3 = _.find(tags, function (tag) {
-                        return tag.slug === exportData.data.tags[2].slug;
-                    });
-
-                    //Check the authors are correct
-                    post1.author_id.should.equal(user2.id);
-                    post2.author_id.should.equal(user3.id);
-                    post3.author_id.should.equal(user1.id);
-
-                    // Created by should be what was in the import file
-                    post1.created_by.should.equal(user1.id);
-                    post2.created_by.should.equal(user3.id);
-                    post3.created_by.should.equal(user1.id);
-
-                    // Updated by gets set to the current user
-                    post1.updated_by.should.equal(user1.id);
-                    post2.updated_by.should.equal(user1.id);
-                    post3.updated_by.should.equal(user1.id);
-
-                    // Published by should be what was in the import file
-                    post1.published_by.should.equal(user2.id);
-                    post2.published_by.should.equal(user3.id);
-                    post3.published_by.should.equal(user1.id);
-
-                    // Created by should be what was in the import file
-                    tag1.created_by.should.equal(user1.id);
-                    tag2.created_by.should.equal(user2.id);
-                    tag3.created_by.should.equal(user3.id);
-
-                    // Updated by gets set to the current user
-                    tag1.updated_by.should.equal(user1.id);
-                    tag2.updated_by.should.equal(user1.id);
-                    tag3.updated_by.should.equal(user1.id);
-
-                    done();
-                }).catch(done);
-            });
-        });
-
-        describe('imports multi user data with no owner onto blank ghost install', function () {
-                    var exportData;
-
-                    before(function doImport(done) {
-                        knex = config.database.knex;
-
-                        testUtils.initFixtures('roles', 'owner', 'settings').then(function () {
-                            return testUtils.fixtures.loadExportFixture('export-003-mu-noOwner');
-                        }).then(function (exported) {
-                            exportData = exported;
-                            return importer('003', exportData);
-                        }).then(function () {
-                            done();
-                        }).catch(done);
-                    });
-                    after(testUtils.teardown);
-
-                    it('gets the right data', function (done) {
-                        var fetchImported = when.join(
-                            knex('posts').select(),
-                            knex('settings').select(),
-                            knex('tags').select()
-                        );
-
-                        fetchImported.then(function (importedData) {
-                            var posts,
-                                settings,
-                                tags,
-                                post1,
-                                post2,
-                                post3;
-
-                            // General data checks
-                            should.exist(importedData);
-                            importedData.length.should.equal(3, 'Did not get data successfully');
-
-                            // Test posts, settings and tags
-                            posts = importedData[0];
-                            settings = importedData[1];
-                            tags = importedData[2];
-
-                            post1 = _.find(posts, function (post) {
-                                return post.slug === exportData.data.posts[0].slug;
-                            });
-                            post2 = _.find(posts, function (post) {
-                                return post.slug === exportData.data.posts[1].slug;
-                            });
-                            post3 = _.find(posts, function (post) {
-                                return post.slug === exportData.data.posts[2].slug;
-                            });
-
-                            // test posts
-                            posts.length.should.equal(3, 'Wrong number of posts');
-                            post1.title.should.equal(exportData.data.posts[0].title);
-                            post2.title.should.equal(exportData.data.posts[1].title);
-                            post3.title.should.equal(exportData.data.posts[2].title);
-
-                            // test tags
-                            tags.length.should.equal(3, 'should be 3 tags');
-
-                            // test settings
-                            settings.length.should.be.above(0, 'Wrong number of settings');
-                            _.findWhere(settings, {key: 'databaseVersion'}).value.should.equal('003', 'Wrong database version');
-
-                            done();
-                        }).catch(done);
-                    });
-
-                    it('imports users with correct roles and status', function (done) {
-                        var fetchImported = when.join(
-                            knex('users').select(),
-                            knex('roles_users').select()
-                        );
-
-                        fetchImported.then(function (importedData) {
-                            var user1,
-                                user2,
-                                user3,
-                                users,
-                                roles_users;
-
-                            // General data checks
-                            should.exist(importedData);
-                            importedData.length.should.equal(2, 'Did not get data successfully');
-
-                            // Test the users and roles
-                            users = importedData[0];
-                            roles_users = importedData[1];
-
-                            // we imported 3 users
-                            // the original user should be untouched
-                            // the two news users should have been created
-                            users.length.should.equal(3, 'There should only be three users');
-
-                            // the owner user is first
-                            user1 = users[0];
-                            // the other two users should have the imported data, but they get inserted in different orders
-                            user2 = _.find(users, function (user) {
-                                return user.name === exportData.data.users[0].name;
-                            });
-                            user3 = _.find(users, function (user) {
-                                return user.name === exportData.data.users[1].name;
-                            });
-
-                            user1.email.should.equal(testUtils.DataGenerator.Content.users[0].email);
-                            user1.password.should.equal(testUtils.DataGenerator.Content.users[0].password);
-                            user1.status.should.equal('active');
-                            user2.email.should.equal(exportData.data.users[0].email);
-                            user3.email.should.equal(exportData.data.users[1].email);
-
-                            // Newly created users should have a status of locked
-                            user2.status.should.equal('locked');
-                            user3.status.should.equal('locked');
-
-                            // Newly created users should have created_at/_by and updated_at/_by set to when they were imported
-                            user2.created_by.should.equal(user1.id);
-                            user2.created_at.should.not.equal(exportData.data.users[0].created_at);
-                            user2.updated_by.should.equal(user1.id);
-                            user2.updated_at.should.not.equal(exportData.data.users[0].updated_at);
-                            user3.created_by.should.equal(user1.id);
-                            user3.created_at.should.not.equal(exportData.data.users[1].created_at);
-                            user3.updated_by.should.equal(user1.id);
-                            user3.updated_at.should.not.equal(exportData.data.users[1].updated_at);
-
-                            roles_users.length.should.equal(3, 'There should be 3 role relations');
-
-                            _.each(roles_users, function (roleUser) {
-                                if (roleUser.user_id === user1.id) {
-                                    roleUser.role_id.should.equal(4, 'Original user should be an owner');
-                                }
-                                if (roleUser.user_id === user2.id) {
-                                    roleUser.role_id.should.equal(1, 'Josephine should be an admin');
-                                }
-                                if (roleUser.user_id === user3.id) {
-                                    roleUser.role_id.should.equal(3, 'Smith should be an author by default');
-                                }
-                            });
-
-                            done();
-                        }).catch(done);
-                    });
-
-                    it('imports posts & tags with correct authors, owners etc', function (done) {
-                        var fetchImported = when.join(
-                            knex('users').select(),
-                            knex('posts').select(),
-                            knex('tags').select()
-                        );
-
-                        fetchImported.then(function (importedData) {
-                            var users, user1, user2, user3,
-                                posts, post1, post2, post3,
-                                tags, tag1, tag2, tag3;
-
-                            // General data checks
-                            should.exist(importedData);
-                            importedData.length.should.equal(3, 'Did not get data successfully');
-
-                            // Test the users and roles
-                            users = importedData[0];
-                            posts = importedData[1];
-                            tags  = importedData[2];
-
-                            // Grab the users
-                            // the owner user is first
-                            user1 = users[0];
-                            // the other two users should have the imported data, but they get inserted in different orders
-                            user2 = _.find(users, function (user) {
-                                return user.name === exportData.data.users[0].name;
-                            });
-                            user3 = _.find(users, function (user) {
-                                return user.name === exportData.data.users[1].name;
-                            });
-                            post1 = _.find(posts, function (post) {
-                                return post.slug === exportData.data.posts[0].slug;
-                            });
-                            post2 = _.find(posts, function (post) {
-                                return post.slug === exportData.data.posts[1].slug;
-                            });
-                            post3 = _.find(posts, function (post) {
-                                return post.slug === exportData.data.posts[2].slug;
-                            });
-                            tag1 = _.find(tags, function (tag) {
-                                return tag.slug === exportData.data.tags[0].slug;
-                            });
-                            tag2 = _.find(tags, function (tag) {
-                                return tag.slug === exportData.data.tags[1].slug;
-                            });
-                            tag3 = _.find(tags, function (tag) {
-                                return tag.slug === exportData.data.tags[2].slug;
-                            });
-
-                            //Check the authors are correct
-                            post1.author_id.should.equal(user2.id);
-                            post2.author_id.should.equal(user3.id);
-                            post3.author_id.should.equal(user1.id);
-
-                            // Created by should be what was in the import file
-                            post1.created_by.should.equal(user1.id);
-                            post2.created_by.should.equal(user3.id);
-                            post3.created_by.should.equal(user1.id);
-
-                            // Updated by gets set to the current user
-                            post1.updated_by.should.equal(user1.id);
-                            post2.updated_by.should.equal(user1.id);
-                            post3.updated_by.should.equal(user1.id);
-
-                            // Published by should be what was in the import file
-                            post1.published_by.should.equal(user2.id);
-                            post2.published_by.should.equal(user3.id);
-                            post3.published_by.should.equal(user1.id);
-
-                            // Created by should be what was in the import file
-                            tag1.created_by.should.equal(user1.id);
-                            tag2.created_by.should.equal(user2.id);
-                            tag3.created_by.should.equal(user3.id);
-
-                            // Updated by gets set to the current user
-                            tag1.updated_by.should.equal(user1.id);
-                            tag2.updated_by.should.equal(user1.id);
-                            tag3.updated_by.should.equal(user1.id);
-
-                            done();
-                        }).catch(done);
-                    });
+        it('gets the right data', function (done) {
+            var fetchImported = Promise.join(
+                knex('posts').select(),
+                knex('settings').select(),
+                knex('tags').select()
+            );
+
+            fetchImported.then(function (importedData) {
+                var posts,
+                    settings,
+                    tags,
+                    post1,
+                    post2,
+                    post3;
+
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(3, 'Did not get data successfully');
+
+                // Test posts, settings and tags
+                posts = importedData[0];
+                settings = importedData[1];
+                tags = importedData[2];
+
+                post1 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[0].slug;
+                });
+                post2 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[1].slug;
+                });
+                post3 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[2].slug;
                 });
 
-        describe('imports multi user data onto existing data', function () {
-            var exportData;
+                // test posts
+                posts.length.should.equal(3, 'Wrong number of posts');
+                post1.title.should.equal(exportData.data.posts[0].title);
+                post2.title.should.equal(exportData.data.posts[1].title);
+                post3.title.should.equal(exportData.data.posts[2].title);
 
-            before(function doImport(done) {
-                knex = config.database.knex;
+                // test tags
+                tags.length.should.equal(3, 'should be 3 tags');
 
-                // initialise the blog with some data
-                testUtils.initFixtures('users:roles', 'posts', 'settings').then(function () {
-                    return testUtils.fixtures.loadExportFixture('export-003-mu');
-                }).then(function (exported) {
-                    exportData = exported;
-                    return importer('003', exportData);
-                }).then(function () {
-                    done();
-                }).catch(done);
-            });
-            after(testUtils.teardown);
+                // test settings
+                settings.length.should.be.above(0, 'Wrong number of settings');
+                _.findWhere(settings, {key: 'databaseVersion'}).value.should.equal('003', 'Wrong database version');
 
-            it('gets the right data', function (done) {
-                var fetchImported = when.join(
-                    knex('posts').select(),
-                    knex('settings').select(),
-                    knex('tags').select()
+                done();
+            }).catch(done);
+        });
+
+        it('imports users with correct roles and status', function (done) {
+            var fetchImported = Promise.join(
+                knex('users').select(),
+                knex('roles_users').select()
+            );
+
+            fetchImported.then(function (importedData) {
+                var user1,
+                    user2,
+                    user3,
+                    users,
+                    rolesUsers;
+
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(2, 'Did not get data successfully');
+
+                // Test the users and roles
+                users = importedData[0];
+                rolesUsers = importedData[1];
+
+                // we imported 3 users
+                // the original user should be untouched
+                // the two news users should have been created
+                users.length.should.equal(3, 'There should only be three users');
+
+                // the owner user is first
+                user1 = users[0];
+                // the other two users should have the imported data, but they get inserted in different orders
+                user2 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[1].name;
+                });
+                user3 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[2].name;
+                });
+
+                user1.email.should.equal(testUtils.DataGenerator.Content.users[0].email);
+                user1.password.should.equal(testUtils.DataGenerator.Content.users[0].password);
+                user1.status.should.equal('active');
+                user2.email.should.equal(exportData.data.users[1].email);
+                user3.email.should.equal(exportData.data.users[2].email);
+
+                // Newly created users should have a status of locked
+                user2.status.should.equal('locked');
+                user3.status.should.equal('locked');
+
+                // Newly created users should have created_at/_by and updated_at/_by set to when they were imported
+                user2.created_by.should.equal(user1.id);
+                user2.created_at.should.not.equal(exportData.data.users[1].created_at);
+                user2.updated_by.should.equal(user1.id);
+                user2.updated_at.should.not.equal(exportData.data.users[1].updated_at);
+                user3.created_by.should.equal(user1.id);
+                user3.created_at.should.not.equal(exportData.data.users[2].created_at);
+                user3.updated_by.should.equal(user1.id);
+                user3.updated_at.should.not.equal(exportData.data.users[2].updated_at);
+
+                rolesUsers.length.should.equal(3, 'There should be 3 role relations');
+
+                _.each(rolesUsers, function (roleUser) {
+                    if (roleUser.user_id === user1.id) {
+                        roleUser.role_id.should.equal(4, 'Original user should be an owner');
+                    }
+                    if (roleUser.user_id === user2.id) {
+                        roleUser.role_id.should.equal(1, 'Josephine should be an admin');
+                    }
+                    if (roleUser.user_id === user3.id) {
+                        roleUser.role_id.should.equal(3, 'Smith should be an author by default');
+                    }
+                });
+
+                done();
+            }).catch(done);
+        });
+
+        it('imports posts & tags with correct authors, owners etc', function (done) {
+            var fetchImported = Promise.join(
+                knex('users').select(),
+                knex('posts').select(),
+                knex('tags').select()
+            );
+
+            fetchImported.then(function (importedData) {
+                var users, user1, user2, user3,
+                    posts, post1, post2, post3,
+                    tags, tag1, tag2, tag3;
+
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(3, 'Did not get data successfully');
+
+                // Test the users and roles
+                users = importedData[0];
+                posts = importedData[1];
+                tags  = importedData[2];
+
+                // Grab the users
+                // the owner user is first
+                user1 = users[0];
+                // the other two users should have the imported data, but they get inserted in different orders
+                user2 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[1].name;
+                });
+                user3 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[2].name;
+                });
+                post1 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[0].slug;
+                });
+                post2 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[1].slug;
+                });
+                post3 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[2].slug;
+                });
+                tag1 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[0].slug;
+                });
+                tag2 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[1].slug;
+                });
+                tag3 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[2].slug;
+                });
+
+                // Check the authors are correct
+                post1.author_id.should.equal(user2.id);
+                post2.author_id.should.equal(user3.id);
+                post3.author_id.should.equal(user1.id);
+
+                // Created by should be what was in the import file
+                post1.created_by.should.equal(user1.id);
+                post2.created_by.should.equal(user3.id);
+                post3.created_by.should.equal(user1.id);
+
+                // Updated by gets set to the current user
+                post1.updated_by.should.equal(user1.id);
+                post2.updated_by.should.equal(user1.id);
+                post3.updated_by.should.equal(user1.id);
+
+                // Published by should be what was in the import file
+                post1.published_by.should.equal(user2.id);
+                post2.published_by.should.equal(user3.id);
+                post3.published_by.should.equal(user1.id);
+
+                // Created by should be what was in the import file
+                tag1.created_by.should.equal(user1.id);
+                tag2.created_by.should.equal(user2.id);
+                tag3.created_by.should.equal(user3.id);
+
+                // Updated by gets set to the current user
+                tag1.updated_by.should.equal(user1.id);
+                tag2.updated_by.should.equal(user1.id);
+                tag3.updated_by.should.equal(user1.id);
+
+                done();
+            }).catch(done);
+        });
+    });
+
+    describe('imports multi user data with no owner onto blank ghost install', function () {
+        var exportData;
+
+        before(function doImport(done) {
+            knex = config.database.knex;
+
+            testUtils.initFixtures('roles', 'owner', 'settings').then(function () {
+                return testUtils.fixtures.loadExportFixture('export-003-mu-noOwner');
+            }).then(function (exported) {
+                exportData = exported;
+                return importer.doImport(exportData);
+            }).then(function () {
+                done();
+            }).catch(done);
+        });
+        after(testUtils.teardown);
+
+        it('gets the right data', function (done) {
+            var fetchImported = Promise.join(
+                knex('posts').select(),
+                knex('settings').select(),
+                knex('tags').select()
+            );
+
+            fetchImported.then(function (importedData) {
+                var posts,
+                    settings,
+                    tags,
+                    post1,
+                    post2,
+                    post3;
+
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(3, 'Did not get data successfully');
+
+                // Test posts, settings and tags
+                posts = importedData[0];
+                settings = importedData[1];
+                tags = importedData[2];
+
+                post1 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[0].slug;
+                });
+                post2 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[1].slug;
+                });
+                post3 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[2].slug;
+                });
+
+                // test posts
+                posts.length.should.equal(3, 'Wrong number of posts');
+                post1.title.should.equal(exportData.data.posts[0].title);
+                post2.title.should.equal(exportData.data.posts[1].title);
+                post3.title.should.equal(exportData.data.posts[2].title);
+
+                // test tags
+                tags.length.should.equal(3, 'should be 3 tags');
+
+                // test settings
+                settings.length.should.be.above(0, 'Wrong number of settings');
+                _.findWhere(settings, {key: 'databaseVersion'}).value.should.equal('003', 'Wrong database version');
+
+                done();
+            }).catch(done);
+        });
+
+        it('imports users with correct roles and status', function (done) {
+            var fetchImported = Promise.join(
+                knex('users').select(),
+                knex('roles_users').select()
+            );
+
+            fetchImported.then(function (importedData) {
+                var user1,
+                    user2,
+                    user3,
+                    users,
+                    rolesUsers;
+
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(2, 'Did not get data successfully');
+
+                // Test the users and roles
+                users = importedData[0];
+                rolesUsers = importedData[1];
+
+                // we imported 3 users
+                // the original user should be untouched
+                // the two news users should have been created
+                users.length.should.equal(3, 'There should only be three users');
+
+                // the owner user is first
+                user1 = users[0];
+                // the other two users should have the imported data, but they get inserted in different orders
+                user2 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[0].name;
+                });
+                user3 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[1].name;
+                });
+
+                user1.email.should.equal(testUtils.DataGenerator.Content.users[0].email);
+                user1.password.should.equal(testUtils.DataGenerator.Content.users[0].password);
+                user1.status.should.equal('active');
+                user2.email.should.equal(exportData.data.users[0].email);
+                user3.email.should.equal(exportData.data.users[1].email);
+
+                // Newly created users should have a status of locked
+                user2.status.should.equal('locked');
+                user3.status.should.equal('locked');
+
+                // Newly created users should have created_at/_by and updated_at/_by set to when they were imported
+                user2.created_by.should.equal(user1.id);
+                user2.created_at.should.not.equal(exportData.data.users[0].created_at);
+                user2.updated_by.should.equal(user1.id);
+                user2.updated_at.should.not.equal(exportData.data.users[0].updated_at);
+                user3.created_by.should.equal(user1.id);
+                user3.created_at.should.not.equal(exportData.data.users[1].created_at);
+                user3.updated_by.should.equal(user1.id);
+                user3.updated_at.should.not.equal(exportData.data.users[1].updated_at);
+
+                rolesUsers.length.should.equal(3, 'There should be 3 role relations');
+
+                _.each(rolesUsers, function (roleUser) {
+                    if (roleUser.user_id === user1.id) {
+                        roleUser.role_id.should.equal(4, 'Original user should be an owner');
+                    }
+                    if (roleUser.user_id === user2.id) {
+                        roleUser.role_id.should.equal(1, 'Josephine should be an admin');
+                    }
+                    if (roleUser.user_id === user3.id) {
+                        roleUser.role_id.should.equal(3, 'Smith should be an author by default');
+                    }
+                });
+
+                done();
+            }).catch(done);
+        });
+
+        it('imports posts & tags with correct authors, owners etc', function (done) {
+            var fetchImported = Promise.join(
+                knex('users').select(),
+                knex('posts').select(),
+                knex('tags').select()
+            );
+
+            fetchImported.then(function (importedData) {
+                var users, user1, user2, user3,
+                    posts, post1, post2, post3,
+                    tags, tag1, tag2, tag3;
+
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(3, 'Did not get data successfully');
+
+                // Test the users and roles
+                users = importedData[0];
+                posts = importedData[1];
+                tags  = importedData[2];
+
+                // Grab the users
+                // the owner user is first
+                user1 = users[0];
+                // the other two users should have the imported data, but they get inserted in different orders
+                user2 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[0].name;
+                });
+                user3 = _.find(users, function (user) {
+                    return user.name === exportData.data.users[1].name;
+                });
+                post1 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[0].slug;
+                });
+                post2 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[1].slug;
+                });
+                post3 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[2].slug;
+                });
+                tag1 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[0].slug;
+                });
+                tag2 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[1].slug;
+                });
+                tag3 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[2].slug;
+                });
+
+                // Check the authors are correct
+                post1.author_id.should.equal(user2.id);
+                post2.author_id.should.equal(user3.id);
+                post3.author_id.should.equal(user1.id);
+
+                // Created by should be what was in the import file
+                post1.created_by.should.equal(user1.id);
+                post2.created_by.should.equal(user3.id);
+                post3.created_by.should.equal(user1.id);
+
+                // Updated by gets set to the current user
+                post1.updated_by.should.equal(user1.id);
+                post2.updated_by.should.equal(user1.id);
+                post3.updated_by.should.equal(user1.id);
+
+                // Published by should be what was in the import file
+                post1.published_by.should.equal(user2.id);
+                post2.published_by.should.equal(user3.id);
+                post3.published_by.should.equal(user1.id);
+
+                // Created by should be what was in the import file
+                tag1.created_by.should.equal(user1.id);
+                tag2.created_by.should.equal(user2.id);
+                tag3.created_by.should.equal(user3.id);
+
+                // Updated by gets set to the current user
+                tag1.updated_by.should.equal(user1.id);
+                tag2.updated_by.should.equal(user1.id);
+                tag3.updated_by.should.equal(user1.id);
+
+                done();
+            }).catch(done);
+        });
+    });
+
+    describe('imports multi user data onto existing data', function () {
+        var exportData;
+
+        before(function doImport(done) {
+            knex = config.database.knex;
+
+            // initialise the blog with some data
+            testUtils.initFixtures('users:roles', 'posts', 'settings').then(function () {
+                return testUtils.fixtures.loadExportFixture('export-003-mu');
+            }).then(function (exported) {
+                exportData = exported;
+                return importer.doImport(exportData);
+            }).then(function () {
+                done();
+            }).catch(done);
+        });
+        after(testUtils.teardown);
+
+        it('gets the right data', function (done) {
+            var fetchImported = Promise.join(
+                knex('posts').select(),
+                knex('settings').select(),
+                knex('tags').select()
+            );
+
+            fetchImported.then(function (importedData) {
+                var posts,
+                    settings,
+                    tags,
+                    post1,
+                    post2,
+                    post3;
+
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(3, 'Did not get data successfully');
+
+                // Test posts, settings and tags
+                posts = importedData[0];
+                settings = importedData[1];
+                tags = importedData[2];
+
+                post1 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[0].slug;
+                });
+                post2 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[1].slug;
+                });
+                post3 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[2].slug;
+                });
+
+                // test posts
+                posts.length.should.equal(
+                    (exportData.data.posts.length + testUtils.DataGenerator.Content.posts.length),
+                    'Wrong number of posts'
                 );
 
-                fetchImported.then(function (importedData) {
-                    var posts,
-                        settings,
-                        tags,
-                        post1,
-                        post2,
-                        post3;
+                posts[0].title.should.equal(testUtils.DataGenerator.Content.posts[0].title);
 
-                    // General data checks
-                    should.exist(importedData);
-                    importedData.length.should.equal(3, 'Did not get data successfully');
+                post1.title.should.equal(exportData.data.posts[0].title);
+                post2.title.should.equal(exportData.data.posts[1].title);
+                post3.title.should.equal(exportData.data.posts[2].title);
 
-                    // Test posts, settings and tags
-                    posts = importedData[0];
-                    settings = importedData[1];
-                    tags = importedData[2];
-
-                    post1 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[0].slug;
-                    });
-                    post2 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[1].slug;
-                    });
-                    post3 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[2].slug;
-                    });
-
-                    // test posts
-                    posts.length.should.equal(
-                        (exportData.data.posts.length + testUtils.DataGenerator.Content.posts.length),
-                        'Wrong number of posts'
-                    );
-
-                    posts[0].title.should.equal(testUtils.DataGenerator.Content.posts[0].title);
-
-                    post1.title.should.equal(exportData.data.posts[0].title);
-                    post2.title.should.equal(exportData.data.posts[1].title);
-                    post3.title.should.equal(exportData.data.posts[2].title);
-
-                    // test tags
-                    tags.length.should.equal(
-                        (exportData.data.tags.length + testUtils.DataGenerator.Content.tags.length),
-                        'Wrong number of tags'
-                    );
-
-                    tags[0].name.should.equal(testUtils.DataGenerator.Content.tags[0].name);
-
-                    // test settings
-                    settings.length.should.be.above(0, 'Wrong number of settings');
-                    _.findWhere(settings, {key: 'databaseVersion'}).value.should.equal('003', 'Wrong database version');
-
-                    done();
-                }).catch(done);
-            });
-
-            it('imports users with correct roles and status', function (done) {
-                var fetchImported = when.join(
-                    knex('users').select(),
-                    knex('roles_users').select()
+                // test tags
+                tags.length.should.equal(
+                    (exportData.data.tags.length + testUtils.DataGenerator.Content.tags.length),
+                    'Wrong number of tags'
                 );
 
-                fetchImported.then(function (importedData) {
-                    var ownerUser,
-                        newUser,
-                        existingUser,
-                        users,
-                        roles_users;
+                tags[0].name.should.equal(testUtils.DataGenerator.Content.tags[0].name);
 
-                    // General data checks
-                    should.exist(importedData);
-                    importedData.length.should.equal(2, 'Did not get data successfully');
+                // test settings
+                settings.length.should.be.above(0, 'Wrong number of settings');
+                _.findWhere(settings, {key: 'databaseVersion'}).value.should.equal('003', 'Wrong database version');
 
-                    // Test the users and roles
-                    users = importedData[0];
-                    roles_users = importedData[1];
+                done();
+            }).catch(done);
+        });
 
-                    // we imported 3 users, there were already 4 users, only one of the imported users is new
-                    users.length.should.equal(5, 'There should only be three users');
+        it('imports users with correct roles and status', function (done) {
+            var fetchImported = Promise.join(
+                knex('users').select(),
+                knex('roles_users').select()
+            );
 
-                    // the owner user is first
-                    ownerUser = users[0];
-                    // the other two users should have the imported data, but they get inserted in different orders
-                    newUser = _.find(users, function (user) {
-                        return user.name === exportData.data.users[1].name;
-                    });
-                    existingUser = _.find(users, function (user) {
-                        return user.name === exportData.data.users[2].name;
-                    });
+            fetchImported.then(function (importedData) {
+                var ownerUser,
+                    newUser,
+                    existingUser,
+                    users,
+                    rolesUsers;
 
-                    ownerUser.email.should.equal(testUtils.DataGenerator.Content.users[0].email);
-                    ownerUser.password.should.equal(testUtils.DataGenerator.Content.users[0].password);
-                    ownerUser.status.should.equal('active');
-                    newUser.email.should.equal(exportData.data.users[1].email);
-                    existingUser.email.should.equal(exportData.data.users[2].email);
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(2, 'Did not get data successfully');
 
-                    // Newly created users should have a status of locked
-                    newUser.status.should.equal('locked');
-                    // The already existing user should still have a status of active
-                    existingUser.status.should.equal('active');
+                // Test the users and roles
+                users = importedData[0];
+                rolesUsers = importedData[1];
 
-                    // Newly created users should have created_at/_by and updated_at/_by set to when they were imported
-                    newUser.created_by.should.equal(ownerUser.id);
-                    newUser.created_at.should.not.equal(exportData.data.users[1].created_at);
-                    newUser.updated_by.should.equal(ownerUser.id);
-                    newUser.updated_at.should.not.equal(exportData.data.users[1].updated_at);
+                // we imported 3 users, there were already 4 users, only one of the imported users is new
+                users.length.should.equal(5, 'There should only be three users');
 
-                    roles_users.length.should.equal(5, 'There should be 5 role relations');
+                // the owner user is first
+                ownerUser = users[0];
+                // the other two users should have the imported data, but they get inserted in different orders
+                newUser = _.find(users, function (user) {
+                    return user.name === exportData.data.users[1].name;
+                });
+                existingUser = _.find(users, function (user) {
+                    return user.name === exportData.data.users[2].name;
+                });
 
-                    _.each(roles_users, function (roleUser) {
-                        if (roleUser.user_id === ownerUser.id) {
-                            roleUser.role_id.should.equal(4, 'Original user should be an owner');
-                        }
-                        if (roleUser.user_id === newUser.id) {
-                            roleUser.role_id.should.equal(1, 'New user should be an admin');
-                        }
-                        if (roleUser.user_id === existingUser.id) {
-                            roleUser.role_id.should.equal(1, 'Existing user was an admin');
-                        }
-                    });
+                ownerUser.email.should.equal(testUtils.DataGenerator.Content.users[0].email);
+                ownerUser.password.should.equal(testUtils.DataGenerator.Content.users[0].password);
+                ownerUser.status.should.equal('active');
+                newUser.email.should.equal(exportData.data.users[1].email);
+                existingUser.email.should.equal(exportData.data.users[2].email);
 
-                    done();
-                }).catch(done);
-            });
+                // Newly created users should have a status of locked
+                newUser.status.should.equal('locked');
+                // The already existing user should still have a status of active
+                existingUser.status.should.equal('active');
 
-            it('imports posts & tags with correct authors, owners etc', function (done) {
-                var fetchImported = when.join(
-                    knex('users').select(),
-                    knex('posts').select(),
-                    knex('tags').select()
-                );
+                // Newly created users should have created_at/_by and updated_at/_by set to when they were imported
+                newUser.created_by.should.equal(ownerUser.id);
+                newUser.created_at.should.not.equal(exportData.data.users[1].created_at);
+                newUser.updated_by.should.equal(ownerUser.id);
+                newUser.updated_at.should.not.equal(exportData.data.users[1].updated_at);
 
-                fetchImported.then(function (importedData) {
-                    var users, ownerUser, newUser, existingUser,
-                        posts, post1, post2, post3,
-                        tags, tag1, tag2, tag3;
+                rolesUsers.length.should.equal(5, 'There should be 5 role relations');
 
-                    // General data checks
-                    should.exist(importedData);
-                    importedData.length.should.equal(3, 'Did not get data successfully');
+                _.each(rolesUsers, function (roleUser) {
+                    if (roleUser.user_id === ownerUser.id) {
+                        roleUser.role_id.should.equal(4, 'Original user should be an owner');
+                    }
+                    if (roleUser.user_id === newUser.id) {
+                        roleUser.role_id.should.equal(1, 'New user should be an admin');
+                    }
+                    if (roleUser.user_id === existingUser.id) {
+                        roleUser.role_id.should.equal(1, 'Existing user was an admin');
+                    }
+                });
 
-                    // Test the users and roles
-                    users = importedData[0];
-                    posts = importedData[1];
-                    tags  = importedData[2];
+                done();
+            }).catch(done);
+        });
 
-                    // Grab the users
-                    // the owner user is first
-                    ownerUser = users[0];
-                    // the other two users should have the imported data, but they get inserted in different orders
-                    newUser = _.find(users, function (user) {
-                        return user.name === exportData.data.users[1].name;
-                    });
-                    existingUser = _.find(users, function (user) {
-                        return user.name === exportData.data.users[2].name;
-                    });
-                    post1 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[0].slug;
-                    });
-                    post2 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[1].slug;
-                    });
-                    post3 = _.find(posts, function (post) {
-                        return post.slug === exportData.data.posts[2].slug;
-                    });
-                    tag1 = _.find(tags, function (tag) {
-                        return tag.slug === exportData.data.tags[0].slug;
-                    });
-                    tag2 = _.find(tags, function (tag) {
-                        return tag.slug === exportData.data.tags[1].slug;
-                    });
-                    tag3 = _.find(tags, function (tag) {
-                        return tag.slug === exportData.data.tags[2].slug;
-                    });
+        it('imports posts & tags with correct authors, owners etc', function (done) {
+            var fetchImported = Promise.join(
+                knex('users').select(),
+                knex('posts').select(),
+                knex('tags').select()
+            );
 
-                    //Check the authors are correct
-                    post1.author_id.should.equal(newUser.id);
-                    post2.author_id.should.equal(existingUser.id);
-                    post3.author_id.should.equal(ownerUser.id);
+            fetchImported.then(function (importedData) {
+                var users, ownerUser, newUser, existingUser,
+                    posts, post1, post2, post3,
+                    tags, tag1, tag2, tag3;
 
-                    // Created by should be what was in the import file
-                    post1.created_by.should.equal(ownerUser.id);
-                    post2.created_by.should.equal(existingUser.id);
-                    post3.created_by.should.equal(ownerUser.id);
+                // General data checks
+                should.exist(importedData);
+                importedData.length.should.equal(3, 'Did not get data successfully');
 
-                    // Updated by gets set to the current user
-                    post1.updated_by.should.equal(ownerUser.id);
-                    post2.updated_by.should.equal(ownerUser.id);
-                    post3.updated_by.should.equal(ownerUser.id);
+                // Test the users and roles
+                users = importedData[0];
+                posts = importedData[1];
+                tags  = importedData[2];
 
-                    // Published by should be what was in the import file
-                    post1.published_by.should.equal(newUser.id);
-                    post2.published_by.should.equal(existingUser.id);
-                    post3.published_by.should.equal(ownerUser.id);
+                // Grab the users
+                // the owner user is first
+                ownerUser = users[0];
+                // the other two users should have the imported data, but they get inserted in different orders
+                newUser = _.find(users, function (user) {
+                    return user.name === exportData.data.users[1].name;
+                });
+                existingUser = _.find(users, function (user) {
+                    return user.name === exportData.data.users[2].name;
+                });
+                post1 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[0].slug;
+                });
+                post2 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[1].slug;
+                });
+                post3 = _.find(posts, function (post) {
+                    return post.slug === exportData.data.posts[2].slug;
+                });
+                tag1 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[0].slug;
+                });
+                tag2 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[1].slug;
+                });
+                tag3 = _.find(tags, function (tag) {
+                    return tag.slug === exportData.data.tags[2].slug;
+                });
 
-                    // Created by should be what was in the import file
-                    tag1.created_by.should.equal(ownerUser.id);
-                    tag2.created_by.should.equal(newUser.id);
-                    tag3.created_by.should.equal(existingUser.id);
+                // Check the authors are correct
+                post1.author_id.should.equal(newUser.id);
+                post2.author_id.should.equal(existingUser.id);
+                post3.author_id.should.equal(ownerUser.id);
 
-                    // Updated by gets set to the current user
-                    tag1.updated_by.should.equal(ownerUser.id);
-                    tag2.updated_by.should.equal(ownerUser.id);
-                    tag3.updated_by.should.equal(ownerUser.id);
+                // Created by should be what was in the import file
+                post1.created_by.should.equal(ownerUser.id);
+                post2.created_by.should.equal(existingUser.id);
+                post3.created_by.should.equal(ownerUser.id);
 
-                    done();
-                }).catch(done);
-            });
+                // Updated by gets set to the current user
+                post1.updated_by.should.equal(ownerUser.id);
+                post2.updated_by.should.equal(ownerUser.id);
+                post3.updated_by.should.equal(ownerUser.id);
+
+                // Published by should be what was in the import file
+                post1.published_by.should.equal(newUser.id);
+                post2.published_by.should.equal(existingUser.id);
+                post3.published_by.should.equal(ownerUser.id);
+
+                // Created by should be what was in the import file
+                tag1.created_by.should.equal(ownerUser.id);
+                tag2.created_by.should.equal(newUser.id);
+                tag3.created_by.should.equal(existingUser.id);
+
+                // Updated by gets set to the current user
+                tag1.updated_by.should.equal(ownerUser.id);
+                tag2.updated_by.should.equal(ownerUser.id);
+                tag3.updated_by.should.equal(ownerUser.id);
+
+                done();
+            }).catch(done);
         });
     });
 });

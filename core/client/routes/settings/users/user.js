@@ -1,4 +1,11 @@
-var SettingsUserRoute = Ember.Route.extend({
+import AuthenticatedRoute from 'ghost/routes/authenticated';
+import styleBody from 'ghost/mixins/style-body';
+
+var SettingsUserRoute = AuthenticatedRoute.extend(styleBody, {
+    titleToken: 'User',
+
+    classNames: ['settings-view-user'],
+
     model: function (params) {
         var self = this;
         // TODO: Make custom user adapter that uses /api/users/:slug endpoint
@@ -39,6 +46,12 @@ var SettingsUserRoute = Ember.Route.extend({
         }
 
         this._super();
+    },
+
+    actions: {
+        save: function () {
+            this.get('controller').send('save');
+        }
     }
 });
 

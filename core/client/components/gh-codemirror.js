@@ -5,26 +5,30 @@ import mobileCodeMirror from 'ghost/utils/codemirror-mobile';
 import setScrollClassName from 'ghost/utils/set-scroll-classname';
 import codeMirrorShortcuts from 'ghost/utils/codemirror-shortcuts';
 
+var onChangeHandler,
+    onScrollHandler,
+    Codemirror;
+
 codeMirrorShortcuts.init();
 
-var onChangeHandler = function (cm, changeObj) {
+onChangeHandler = function (cm, changeObj) {
     var line,
-        component = cm.component,
-        checkLine = _.bind(component.checkLine, component),
-        checkMarkers = _.bind(component.checkMarkers, component);
+        component = cm.component;
 
     // fill array with a range of numbers
     for (line = changeObj.from.line; line < changeObj.from.line + changeObj.text.length; line += 1) {
-        checkLine(line, changeObj.origin);
+        component.checkLine.call(component, line, changeObj.origin);
     }
 
     // Is this a line which may have had a marker on it?
-    checkMarkers();
+    component.checkMarkers.call(component);
 
     cm.component.set('value', cm.getValue());
+
+    component.sendAction('typingPause');
 };
 
-var onScrollHandler = function (cm) {
+onScrollHandler = function (cm) {
     var scrollInfo = cm.getScrollInfo(),
         component = cm.component;
 
@@ -36,37 +40,48 @@ var onScrollHandler = function (cm) {
     }, 10);
 };
 
-var Codemirror = Ember.TextArea.extend(MarkerManager, {
+Codemirror = Ember.TextArea.extend(MarkerManager, {
+    focus: true,
+    focusCursorAtEnd: false,
+
+    setFocus: function () {
+        if (this.get('focus')) {
+            this.$().val(this.$().val()).focus();
+        }
+    }.on('didInsertElement'),
+
     didInsertElement: function () {
         Ember.run.scheduleOnce('afterRender', this, this.afterRenderEvent);
     },
 
     afterRenderEvent: function () {
-        var initMarkers = _.bind(this.initMarkers, this);
-
-        // Allow tabbing behaviour when viewing on small screen (not mobile)
-        $('#entry-markdown-header').on('click', function () {
-            $('.entry-markdown').addClass('active');
-            $('.entry-preview').removeClass('active');
-        });
-
-        $('#entry-preview-header').on('click', function () {
-            $('.entry-markdown').removeClass('active');
-            $('.entry-preview').addClass('active');
-        });
+        var self = this,
+            codemirror;
 
         // replaces CodeMirror with TouchEditor only if we're on mobile
         mobileCodeMirror.createIfMobile();
 
-        this.initCodemirror();
-        this.codemirror.eachLine(initMarkers);
+        codemirror = this.initCodemirror();
+        this.set('codemirror', codemirror);
+
         this.sendAction('setCodeMirror', this);
+
+        if (this.get('focus') && this.get('focusCursorAtEnd')) {
+            codemirror.execCommand('goDocEnd');
+        }
+
+        codemirror.eachLine(function initMarkers() {
+            self.initMarkers.apply(self, arguments);
+        });
     },
 
     // this needs to be placed on the 'afterRender' queue otherwise CodeMirror gets wonky
     initCodemirror: function () {
         // create codemirror
-        var codemirror = CodeMirror.fromTextArea(this.get('element'), {
+        var codemirror,
+            self = this;
+
+        codemirror = CodeMirror.fromTextArea(this.get('element'), {
             mode:           'gfm',
             tabMode:        'indent',
             tabindex:       '2',
@@ -75,11 +90,22 @@ var Codemirror = Ember.TextArea.extend(MarkerManager, {
             dragDrop:       false,
             extraKeys: {
                 Home:   'goLineLeft',
-                End:    'goLineRight'
+                End:    'goLineRight',
+                'Ctrl-U': false,
+                'Cmd-U': false,
+                'Shift-Ctrl-U': false,
+                'Shift-Cmd-U': false,
+                'Ctrl-S': false,
+                'Cmd-S': false,
+                'Ctrl-D': false,
+                'Cmd-D': false
             }
         });
 
-        codemirror.component = this; // save reference to this
+        // Codemirror needs a reference to the component
+        // so that codemirror originating events can propogate
+        // up the ember action pipeline
+        codemirror.component = this;
 
         // propagate changes to value property
         codemirror.on('change', onChangeHandler);
@@ -88,11 +114,15 @@ var Codemirror = Ember.TextArea.extend(MarkerManager, {
         codemirror.on('scroll', onScrollHandler);
 
         codemirror.on('scroll', Ember.run.bind(Ember.$('.CodeMirror-scroll'), setScrollClassName, {
-            target: Ember.$('.entry-markdown'),
+            target: Ember.$('.js-entry-markdown'),
             offset: 10
         }));
 
-        this.set('codemirror', codemirror);
+        codemirror.on('focus', function () {
+            self.sendAction('onFocusIn');
+        });
+
+        return codemirror;
     },
 
     disableCodeMirror: function () {

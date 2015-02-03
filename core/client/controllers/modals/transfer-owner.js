@@ -5,13 +5,13 @@ var TransferOwnerController = Ember.Controller.extend({
                 url = this.get('ghostPaths.url').api('users', 'owner'),
                 self = this;
 
-            self.get('popover').closePopovers();
+            self.get('dropdown').closeDropdowns();
 
             ic.ajax.request(url, {
                 type: 'PUT',
                 data: {
                     owner: [{
-                        'id': user.get('id')
+                        id: user.get('id')
                     }]
                 }
             }).then(function (response) {
@@ -39,12 +39,12 @@ var TransferOwnerController = Ember.Controller.extend({
 
     confirm: {
         accept: {
-            text: 'YEP - I\'M SURE',
-            buttonClass: 'button-delete'
+            text: 'Yep - I\'m sure',
+            buttonClass: 'btn btn-red'
         },
         reject: {
-            text: 'CANCEL',
-            buttonClass: 'button'
+            text: 'Cancel',
+            buttonClass: 'btn btn-default btn-minor'
         }
     }
 });

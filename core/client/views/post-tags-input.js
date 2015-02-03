@@ -1,9 +1,8 @@
 var PostTagsInputView = Ember.View.extend({
     tagName: 'section',
     elementId: 'entry-tags',
-    classNames: 'left',
-
-    templateName: 'post-tags-input',
+    classNames: 'publish-bar-inner',
+    classNameBindings: ['hasFocus:focused'],
 
     hasFocus: false,
 
@@ -14,8 +13,7 @@ var PostTagsInputView = Ember.View.extend({
         ESCAPE: 27,
         UP: 38,
         DOWN: 40,
-        NUMPAD_ENTER: 108,
-        COMMA: 188
+        NUMPAD_ENTER: 108
     },
 
     didInsertElement: function () {
@@ -26,7 +24,7 @@ var PostTagsInputView = Ember.View.extend({
         this.get('controller').send('reset');
     },
 
-    overlayStyles: function () {
+    overlayStyles: Ember.computed('hasFocus', 'controller.suggestions.length', function () {
         var styles = [],
             leftPos;
 
@@ -40,8 +38,7 @@ var PostTagsInputView = Ember.View.extend({
         }
 
         return styles.join(';');
-    }.property('hasFocus', 'controller.suggestions.length'),
-
+    }),
 
     tagInputView: Ember.TextField.extend({
         focusIn: function () {
@@ -50,10 +47,23 @@ var PostTagsInputView = Ember.View.extend({
 
         focusOut: function () {
             this.get('parentView').set('hasFocus', false);
+        },
 
-            // if (!Ember.isEmpty(this.get('value'))) {
-            //     this.get('parentView.controller').send('addNewTag');
-            // }
+        keyPress: function (event) {
+            // listen to keypress event to handle comma key on international keyboard
+            var controller = this.get('parentView.controller'),
+                isComma = ','.localeCompare(String.fromCharCode(event.keyCode || event.charCode)) === 0;
+
+            // use localeCompare in case of international keyboard layout
+            if (isComma) {
+                event.preventDefault();
+
+                if (controller.get('selectedSuggestion')) {
+                    controller.send('addSelectedSuggestion');
+                } else {
+                    controller.send('addNewTag');
+                }
+            }
         },
 
         keyDown: function (event) {
@@ -75,11 +85,6 @@ var PostTagsInputView = Ember.View.extend({
                 case keys.TAB:
                 case keys.ENTER:
                 case keys.NUMPAD_ENTER:
-                case keys.COMMA:
-                    if (event.keyCode === keys.COMMA && event.shiftKey) {
-                        break;
-                    }
-
                     if (controller.get('selectedSuggestion')) {
                         event.preventDefault();
                         controller.send('addSelectedSuggestion');
@@ -108,19 +113,6 @@ var PostTagsInputView = Ember.View.extend({
         }
     }),
 
-
-    tagView: Ember.View.extend({
-        tagName: 'span',
-        classNames: 'tag',
-
-        tag: null,
-
-        click: function () {
-            this.get('parentView.controller').send('deleteTag', this.get('tag'));
-        }
-    }),
-
-
     suggestionView: Ember.View.extend({
         tagName: 'li',
         classNameBindings: 'suggestion.selected',
@@ -138,8 +130,17 @@ var PostTagsInputView = Ember.View.extend({
             event.preventDefault();
             this.get('parentView.controller').send('addTag',
                 this.get('suggestion.tag'));
-        },
-    })
+        }
+    }),
+
+    actions: {
+        deleteTag: function (tag) {
+            // The view wants to keep focus on the input after a click on a tag
+            Ember.$('.js-tag-input').focus();
+            // Make the controller do the actual work
+            this.get('controller').send('deleteTag', tag);
+        }
+    }
 });
 
 export default PostTagsInputView;

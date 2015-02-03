@@ -7,6 +7,8 @@ var DeleteAllController = Ember.Controller.extend({
                 type: 'DELETE'
             }).then(function () {
                 self.notifications.showSuccess('All content deleted from database.');
+                self.store.unloadAll('post');
+                self.store.unloadAll('tag');
             }).catch(function (response) {
                 self.notifications.showErrors(response);
             });
@@ -20,11 +22,11 @@ var DeleteAllController = Ember.Controller.extend({
     confirm: {
         accept: {
             text: 'Delete',
-            buttonClass: 'button-delete'
+            buttonClass: 'btn btn-red'
         },
         reject: {
             text: 'Cancel',
-            buttonClass: 'button'
+            buttonClass: 'btn btn-default btn-minor'
         }
     }
 });
