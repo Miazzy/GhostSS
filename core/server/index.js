@@ -202,12 +202,10 @@ function init(options) {
 
         // Log all theme errors and warnings
         _.each(config.paths.availableThemes._messages.errors, function (error) {
-            console.log('test');
             errors.logError(error.message, error.context, error.help);
         });
 
         _.each(config.paths.availableThemes._messages.warns, function (warn) {
-            console.log('test2');
             errors.logWarn(warn.message, warn.context, warn.help);
         });
 
