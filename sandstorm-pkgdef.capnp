@@ -17,7 +17,7 @@ const pkgdef :Spk.PackageDefinition = (
     # This manifest is included in your app package to tell Sandstorm
     # about your app.
 
-    appVersion = 5,  # Increment this for every release.
+    appVersion = 7,  # Increment this for every release.
 
     actions = [
       # Define your "new document" handlers here.
@@ -48,7 +48,13 @@ const pkgdef :Spk.PackageDefinition = (
         # You probably don't want the app pulling files from these places,
         # so we hide them. Note that /dev, /var, and /tmp are implicitly
         # hidden because Sandstorm itself provides them.
-      )
+      ),
+      ( sourcePath = "/usr/local/lib/libkj-0.6-dev.so", packagePath = "usr/lib/libkj-0.6-dev.so" ),
+      ( sourcePath = "/usr/local/lib/libkj-async-0.6-dev.so", packagePath = "usr/lib/libkj-async-0.6-dev.so" ),
+      ( sourcePath = "/usr/local/lib/libcapnp-0.6-dev.so", packagePath = "usr/lib/libcapnp-0.6-dev.so" ),
+      ( sourcePath = "/usr/local/lib/libcapnpc-0.6-dev.so", packagePath = "usr/lib/libcapnpc-0.6-dev.so" ),
+      ( sourcePath = "/usr/local/lib/libcapnp-rpc-0.6-dev.so", packagePath = "usr/lib/libcapnp-rpc-0.6-dev.so" ),
+      ( sourcePath = "/opt/sandstorm/latest/usr/include", packagePath = "usr/include" )
     ]
   ),
 
