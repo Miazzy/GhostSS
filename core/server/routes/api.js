@@ -91,13 +91,7 @@ apiRoutes = function (middleware) {
     router.post('/uploads', middleware.busboy, api.http(api.uploads.add));
 
     // ## Sandstorm
-    router.get('/sandstorm/live', function redirect(req, res) {
-        /*jslint unparam:true*/
-        return api.sandstorm.live().then(function (data) {
-            res.redirect(301, data.url);
-        });
-    });
-
+    router.get('/sandstorm/live', api.http(api.sandstorm.live));
     router.get('/sandstorm/faq', api.http(api.sandstorm.faq));
 
     return router;

@@ -2,6 +2,7 @@ var frontend    = require('../controllers/frontend'),
     config      = require('../config'),
     express     = require('express'),
     utils       = require('../utils'),
+    api       = require('../api'),
 
     frontendRoutes;
 
@@ -50,7 +51,20 @@ frontendRoutes = function () {
 
     // Default
     router.get('/page/:page/', frontend.homepage);
-    router.get('/', frontend.homepage);
+
+    router.get('/live-sandstorm/', function redirect(req, res) {
+        /*jslint unparam:true*/
+        return api.sandstorm.live().then(function (data) {
+            res.redirect(301, data.url);
+        });
+    });
+    router.get('/', function(req, res, next) {
+        if (req.headers['user-agent'] === 'sandstormpublish') {
+            frontend.homepage(req,res,next);
+        } else {
+            res.redirect(subdir + '/ghost/');
+        }
+    });
     router.get('*', frontend.single);
 
     return router;

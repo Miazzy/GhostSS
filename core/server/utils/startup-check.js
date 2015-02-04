@@ -52,7 +52,7 @@ checks = {
         var configFile,
             config,
             contentPath,
-            contentSubPaths = ['apps', 'data', 'images', 'themes'],
+            contentSubPaths = ['apps', 'data', 'images'],
             fd,
             errorHeader = '\x1B[31mERROR: Unable to access Ghost\'s content path:\033[0m',
             errorHelp = '\x1B[32mCheck that the content path exists and file system permissions are correct.' +

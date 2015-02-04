@@ -103,25 +103,25 @@ function builtFilesExist() {
 // This is also a "one central repository" of adding startup notifications in case
 // in the future apps will want to hook into here
 function initNotifications() {
-    if (mailer.state && mailer.state.usingDirect) {
-        api.notifications.add({notifications: [{
-            type: 'info',
-            message: [
-                'Ghost is attempting to use a direct method to send e-mail.',
-                'It is recommended that you explicitly configure an e-mail service.',
-                'See <a href=\'http://support.ghost.org/mail\' target=\'_blank\'>http://support.ghost.org/mail</a> for instructions'
-            ].join(' ')
-        }]}, {context: {internal: true}});
-    }
-    if (mailer.state && mailer.state.emailDisabled) {
-        // api.notifications.add({ notifications: [{
-        //     type: 'warn',
-        //     message: [
-        //         "Ghost is currently unable to send e-mail.",
-        //         "See <a href=\"http://support.ghost.org/mail\">http://support.ghost.org/mail</a> for instructions"
-        //     ].join(' ')
-        // }] }, {context: {internal: true}});
-    }
+    // if (mailer.state && mailer.state.usingDirect) {
+    //     api.notifications.add({notifications: [{
+    //         type: 'info',
+    //         message: [
+    //             'Ghost is attempting to use a direct method to send e-mail.',
+    //             'It is recommended that you explicitly configure an e-mail service.',
+    //             'See <a href=\'http://support.ghost.org/mail\' target=\'_blank\'>http://support.ghost.org/mail</a> for instructions'
+    //         ].join(' ')
+    //     }]}, {context: {internal: true}});
+    // }
+    // if (mailer.state && mailer.state.emailDisabled) {
+    //     api.notifications.add({ notifications: [{
+    //         type: 'warn',
+    //         message: [
+    //             "Ghost is currently unable to send e-mail.",
+    //             "See <a href=\"http://support.ghost.org/mail\">http://support.ghost.org/mail</a> for instructions"
+    //         ].join(' ')
+    //     }] }, {context: {internal: true}});
+    // }
 }
 
 // ## Initializes the ghost application.
@@ -202,10 +202,12 @@ function init(options) {
 
         // Log all theme errors and warnings
         _.each(config.paths.availableThemes._messages.errors, function (error) {
+            console.log('test');
             errors.logError(error.message, error.context, error.help);
         });
 
         _.each(config.paths.availableThemes._messages.warns, function (warn) {
+            console.log('test2');
             errors.logWarn(warn.message, warn.context, warn.help);
         });
 

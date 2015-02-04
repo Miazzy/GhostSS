@@ -19,11 +19,11 @@
     {{/unless}}
 
     {{#link-to "sandstorm" classNames="nav-item nav-new js-nav-item"}}
-        <div class="nav-label"><i class="icon-add"></i> Connect To Your Domain</div>
+        <div class="nav-label"><i class="icon-question"></i> Connect To Your Domain</div>
     {{/link-to}}
-    <li class="js-close-sidebar">
-        <a target="_blank" href="/live-sandstorm/" style="cursor: pointer;">View Live Site</a>
-    </li>
+    <a class="ember-view nav-item nav-new js-nav-item" href="/live-sandstorm/" target="_blank">
+        <div class="nav-label"><i class="icon-code"></i> View Live Site</div>
+    </a>
 
     {{! TODO: Mobile-only menu items
 

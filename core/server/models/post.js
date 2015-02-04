@@ -60,7 +60,7 @@ Post = ghostBookshelf.Model.extend({
 
             sandstorm.publish();
 
-            return self.updateTags(model, attributes, options);
+            return self.updateTags(model, response, options);
         });
 
         // Ensures local copy of permalink setting is kept up to date

@@ -1,21 +1,20 @@
 // # Sandstorm API
 // RESTful API for the Sandstorm resource
-var when            = require('when'),
-    _               = require('lodash'),
-    errors          = require('../errors'),
-    utils           = require('./utils'),
-    capnp          = require('capnp'),
+var capnp          = require('capnp'),
     sandstorm;
 
 var HackSession = capnp.importSystem("hack-session.capnp");
 
 var publicIdPromise;
 
-initPromise = function () {
+var initPromise = function () {
     if (!publicIdPromise) {
         var connection = capnp.connect("unix:/tmp/sandstorm-api");
         var session = connection.restore("HackSessionContext", HackSession.HackSessionContext);
         publicIdPromise = session.getPublicId();
+        publicIdPromise.tap = function () {
+            return publicIdPromise;
+        };
     }
 };
 
@@ -27,11 +26,15 @@ sandstorm = {
      * @param {{context}} options (optional)
      * @returns hash containing url
      */
-    live: function browse(options) {
+    live: function browse() {
         initPromise();
-        return publicIdPromise.then(function (data) {
+        var promise = publicIdPromise.then(function (data) {
             return {url: data.autoUrl};
         });
+        promise.tap = function () {
+            return promise;
+        };
+        return promise;
     },
 
     /**
@@ -40,10 +43,10 @@ sandstorm = {
      * @param {{context}} options (optional)
      * @returns hash of relevant data
      */
-    faq: function browse(options) {
+    faq: function browse() {
         initPromise();
         return publicIdPromise;
     },
-}
+};
 
 module.exports = sandstorm;

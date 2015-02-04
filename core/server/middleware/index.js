@@ -23,18 +23,18 @@ var api            = require('../api'),
     oauth2orize    = require('oauth2orize'),
     authStrategies = require('./auth-strategies'),
     utils          = require('../utils'),
-    when           = require('when'),
-    sandstorm      = require('../sandstorm'),
-    capnp          = require('capnp'),
     sitemapHandler = require('../data/sitemap/handler'),
+    capnp          = require('capnp'),
+    Promise        = require('bluebird'),
 
     blogApp,
     setupMiddleware;
+
+// ##Custom Middleware
+
 var HackSession = capnp.importSystem("hack-session.capnp");
 
 var publicIdPromise;
-
-// ##Custom Middleware
 
 // ### GhostLocals Middleware
 // Expose the standard locals that every external page should have available,
@@ -55,7 +55,7 @@ function ghostLocals(req, res, next) {
             publicIdPromise = session.getPublicId();
         }
       //  res.locals.csrfToken = req.csrfToken();
-        when.all([
+        Promise.all([
             api.users.read({id: req.user.id, include: 'roles', context: context}),
             publicIdPromise
         ]).then(function (values) {
@@ -65,7 +65,7 @@ function ghostLocals(req, res, next) {
             if (currentUser.name === "Sandstorm") {
                 console.log('Changing sandstorm user name');
                 var hackUser = {id: '1', context: context};
-                currentUser.name = req.headers['x-sandstorm-username'];
+                currentUser.name = decodeURIComponent(req.headers['x-sandstorm-username']);
                 api.users.edit(values[0], hackUser).then(function () {console.log('Successfully changed user name');}).otherwise(function (err) {console.log('Failed changed user name', err);});
             }
 
@@ -82,7 +82,7 @@ function ghostLocals(req, res, next) {
                 sandstormIsDemoUser: publicIdData.isDemoUser
             });
             next();
-        }).otherwise(function (err) {
+        }).catch(function (err) {
             console.log('Error logging in', err);
             next();
         });
@@ -164,7 +164,6 @@ function updateActiveTheme(req, res, next) {
             } else {
                 activateTheme(activeTheme.value);
             }
-            sandstorm.publish();
         }
         next();
     }).catch(function (err) {
@@ -398,6 +397,3 @@ module.exports = setupMiddleware;
 module.exports.middleware = middleware;
 // Expose middleware functions in this file as well
 module.exports.middleware.redirectToSetup = redirectToSetup;
-
-module.exports.publicIdPromise = publicIdPromise;
-

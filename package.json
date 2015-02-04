@@ -36,6 +36,7 @@
         "body-parser": "1.10.0",
         "bookshelf": "0.7.9",
         "busboy": "0.2.9",
+        "capnp": "0.1.11",
         "cheerio": "0.18.0",
         "colors": "0.6.2",
         "compression": "1.2.2",
