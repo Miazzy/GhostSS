@@ -6,6 +6,9 @@ Ghost is a free, open, simple blogging platform that's available to anyone who w
 
 Visit the project's website at <http://ghost.org> &bull; docs on <http://support.ghost.org>.
 
+## Sandstorm
+
+Install the dependencies as it describes [below](#install-from-git). Then you can run `spk dev`/`spk pack` like normal.
 
 ## Getting Involved
 
@@ -16,7 +19,7 @@ Want to report a bug, request a feature, contribute or translate Ghost? Check ou
 
 There are a few different ways to install Ghost, take care to use the method which best suits your needs.
 
-**Please note** - the downloadable zip files we provide on [Ghost.org](http://ghost.org/download), the [GitHub releases page](https://github.com/TryGhost/Ghost/releases), and via npm are pre-built packages designed for getting setup quickly. Cloning from the git repository requires you to install several dependencies and build the assets yourself. 
+**Please note** - the downloadable zip files we provide on [Ghost.org](http://ghost.org/download), the [GitHub releases page](https://github.com/TryGhost/Ghost/releases), and via npm are pre-built packages designed for getting setup quickly. Cloning from the git repository requires you to install several dependencies and build the assets yourself.
 
 
 ### Install from zip (fastest & best for bloggers)
@@ -26,7 +29,7 @@ If you just want to get a Ghost blog running in the fastest time possible, this 
 For detailed instructions on various platforms, visit the [Ghost Installation Guide](http://support.ghost.org/installation/). If you get stuck, help is available on [our support site](http://support.ghost.org/).
 
 1. Install [Node.js](http://nodejs.org) - Ghost requires **Node v0.10.x**
-1. Download the latest Ghost package from [Ghost.org](http://ghost.org/download). 
+1. Download the latest Ghost package from [Ghost.org](http://ghost.org/download).
 1. Create a new directory where you would like to run the code, and un-zip the package to that location.
 1. Fire up a Terminal, the Node Command Prompt or shell and change directory to the root of the Ghost application (where config.example.js and index.js are)
 1. run `npm install --production` to install the node dependencies. If you see `error Error: ENOENT` on this step, make sure you are in the project directory and try again.
