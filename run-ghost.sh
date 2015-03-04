@@ -10,8 +10,9 @@ been published. Please wait while it is being generated. </p>
 __EOF__
 
 test -e var/ghostcms/content || cp -R content var/ghostcms
-rm -rf var/ghostcms/content/themes
-ln -s /themes var/ghostcms/content/themes
+test -L var/ghostcms/content/themes && rm -rf var/ghostcms/content/themes
+mkdir -p var/ghostcms/content/themes
+ln -s /themes/* var/ghostcms/content/themes
 test -e var/ghostcms/content/data/ghost-dev.db || cp dbseed/ghost-dev.db  var/ghostcms/content/data
 
 rm -rf /var/www_*
