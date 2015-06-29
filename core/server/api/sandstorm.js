@@ -1,6 +1,7 @@
 // # Sandstorm API
 // RESTful API for the Sandstorm resource
 var capnp          = require('capnp'),
+    url            = require('url'),
     sandstorm;
 
 var HackSession = capnp.importSystem("hack-session.capnp");
@@ -45,7 +46,14 @@ sandstorm = {
      */
     faq: function browse() {
         initPromise();
-        return publicIdPromise;
+        var promise = publicIdPromise.then(function (data) {
+            data.autoUrl = url.parse(data.autoUrl).host;
+            return data;
+        });
+        promise.tap = function () {
+            return promise;
+        };
+        return promise;
     },
 };
 
