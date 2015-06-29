@@ -17,7 +17,11 @@ const pkgdef :Spk.PackageDefinition = (
     # This manifest is included in your app package to tell Sandstorm
     # about your app.
 
-    appVersion = 9,  # Increment this for every release.
+    appTitle = (defaultText = "Ghost"),
+
+    appVersion = 10,  # Increment this for every release.
+
+    appMarketingVersion = (defaultText = "0.2.0"),
 
     actions = [
       # Define your "new document" handlers here.
@@ -72,7 +76,7 @@ const pkgdef :Spk.PackageDefinition = (
 
 const myCommand :Spk.Manifest.Command = (
   # Here we define the command used to start up your server.
-  argv = ["/sandstorm-http-bridge", "8080", "--", "./run-ghost.sh"],
+  argv = ["/sandstorm-http-bridge-old", "8080", "--", "./run-ghost.sh"],
   environ = [
     # Note that this defines the *entire* environment seen by your app.
     (key = "PATH", value = "/usr/local/bin:/usr/bin:/bin")
