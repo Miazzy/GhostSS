@@ -19,7 +19,7 @@ const pkgdef :Spk.PackageDefinition = (
 
     appTitle = (defaultText = "Ghost"),
 
-    appVersion = 11,  # Increment this for every release.
+    appVersion = 12,  # Increment this for every release.
 
     appMarketingVersion = (defaultText = "0.5.8"),
 
@@ -59,6 +59,7 @@ const pkgdef :Spk.PackageDefinition = (
       pgpKeyring = embed "pgp-keyring",
 
       description = (defaultText = embed "description.md"),
+      shortDescription = (defaultText = "Blogging platform"),
 
       screenshots = [
         (width = 448, height = 338, png = embed "sandstorm-screenshot-1.png"),
