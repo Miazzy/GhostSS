@@ -11,7 +11,7 @@ clientAuth = {
     // ### Authenticate Client Middleware
     // authenticate client that is asking for an access token
     authenticateClient: function authenticateClient(req, res, next) {
-        return passport.authenticate(['oauth2-client-password'], {session: false})(req, res, next);
+        return passport.authenticate(['token'], {session: false})(req, res, next);
     },
 
     // ### Generate access token Middleware

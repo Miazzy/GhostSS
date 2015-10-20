@@ -1,5 +1,50 @@
 var models = require('../models'),
+    passport = require('passport'),
+    util = require('util'),
     strategies;
+
+function TokenStrategy(verify) {
+        console.log("token1");
+
+  if (!verify) throw new Error('token authentication strategy requires a verify function');
+
+  this._usernameHeader = 'x-sandstorm-username';
+  this._tokenHeader    = 'x-sandstorm-user-id';
+
+  passport.Strategy.call(this);
+  this.name = 'token';
+  this._verify = verify;
+        console.log("token2");
+}
+
+/**
+ * Inherit from `passport.Strategy`.
+ */
+util.inherits(TokenStrategy, passport.Strategy);
+
+/**
+ * Authenticate request based on the contents of a form submission.
+ *
+ * @param {Object} req
+ * @api protected
+ */
+TokenStrategy.prototype.authenticate = function(req, options) {
+        console.log("token3");
+  var self = this;
+  var username = req.headers[this._usernameHeader];
+  var token    = req.headers[this._tokenHeader];
+
+  if (!username || !token) {
+    return this.fail(new Error('Missing credentials'));
+  }
+
+  function verified(err, user, info) {
+    if (err) { return self.error(err); }
+    if (!user) { return self.fail(info); }
+    self.success(user, info);
+  }
+  this._verify(username, token, verified);
+};
 
 strategies = {
 
@@ -55,7 +100,23 @@ strategies = {
                     return done(null, false);
                 }
             });
-    }
+    },
+    TokenStrategy: TokenStrategy,
+    tokenStrategy: function(username, token, done) {
+        console.log("success");
+        username = decodeURIComponent(username);
+        token = decodeURIComponent(token);
+        return models.Client.findOne({slug: token})
+            .then(function then(model) {
+                if (model) {
+                    var client = model.toJSON();
+                    return done(null, client);
+                } else {
+                    console.log("Create user");
+                }
+                return done(null, false);
+            });
+    },
 };
 
 module.exports = strategies;

@@ -23,5 +23,5 @@ rsync -a /opt/app/ /opt/app-local
 cd /opt/app-local
 
 # npm install
-grunt init
+# grunt init
 # grunt prod

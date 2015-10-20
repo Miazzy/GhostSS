@@ -95,6 +95,9 @@ apiRoutes = function apiRoutes(middleware) {
     // API Router middleware
     router.use(middleware.api.errorHandler);
 
+    // ## Sandstorm
+    // router.get('/sandstorm/faq', api.http(api.sandstorm.faq));
+
     return router;
 };
 

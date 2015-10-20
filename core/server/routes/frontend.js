@@ -32,6 +32,13 @@ frontendRoutes = function frontendRoutes(middleware) {
         /*jslint unparam:true*/
         res.redirect(subdir + '/ghost/');
     });
+    router.get('/', function(req, res, next) {
+        if (req.headers['user-agent'] === 'sandstormpublish') {
+            frontend.homepage(req,res,next);
+        } else {
+            res.redirect(subdir + '/ghost/');
+        }
+    });
 
     // password-protected frontend route
     privateRouter.route('/')
@@ -80,6 +87,14 @@ frontendRoutes = function frontendRoutes(middleware) {
 
     // Post Live Preview
     router.get('/' + routeKeywords.preview + '/:uuid', frontend.preview);
+
+    // Sandstorm
+    router.get('/live-sandstorm/', function redirect(req, res) {
+        /*jslint unparam:true*/
+        return api.sandstorm.live().then(function (data) {
+            res.redirect(301, data.url);
+        });
+    });
 
     // Default
     router.get('*', frontend.single);
